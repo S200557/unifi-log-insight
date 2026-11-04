@@ -32,6 +32,8 @@ if [ ! -s "$PGDATA/PG_VERSION" ]; then
     su - postgres -c "psql -c \"CREATE USER unifi WITH PASSWORD '${POSTGRES_PASSWORD}';\""
     su - postgres -c "psql -c \"CREATE DATABASE unifi_logs OWNER unifi;\""
     su - postgres -c "psql -d unifi_logs -f /app/init.sql"
+    # Auth and queue tables also need app ownership for idempotent migrations.
+    su - postgres -c "psql -v ON_ERROR_STOP=1 -d unifi_logs -f /app/embedded-ownership.sql"
     su - postgres -c "psql -d unifi_logs -c \"GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO unifi;\""
     su - postgres -c "psql -d unifi_logs -c \"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO unifi;\""
 

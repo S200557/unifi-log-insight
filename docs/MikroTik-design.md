@@ -74,7 +74,7 @@ The original internal table name `unifi_clients` is retained as a compatibility 
 
 The new setup page selects exact WAN names and edits local interface labels, VPN badges/CIDRs and firewall prefix meanings. It does not request router credentials. Saving is one local database transaction followed by the existing receiver reload signal. Input validation occurs before writes. Prefix mappings are included in settings export/import. WAN/gateway auto-discovery inherited from UniFi-specific patterns is only best-effort; do not treat absent detected WAN addresses as proof that a WAN is down.
 
-The MikroTik profile does not register UniFi HTTP routes or permit UniFi controller/firewall MCP tools. It adds read-only status, resources and observed-client MCP tools using `system.read`. API route scope coverage includes the new endpoints; configuration writes require `settings.write`. The upstream startup message that prints a proxy trust token is suppressed in this profile.
+The MikroTik profile does not register UniFi HTTP routes or permit UniFi controller/firewall MCP tools. It adds read-only status, resources and observed-client MCP tools using `system.read`. API route scope coverage includes the new endpoints; configuration writes require `settings.write`. The upstream startup message that prints a proxy trust token is suppressed in this profile. Fresh embedded database initialization also transfers the authentication and queue tables to the existing application role, so schema migrations do not fail ownership checks. This ownership step is not run against external databases.
 
 ## Feature preservation
 
