@@ -85,7 +85,7 @@ function LogRow({ log, isExpanded, detailedLog, onToggle, hiddenColumns, colCoun
 
   const infoText = log.log_type === 'firewall'
     ? (normalizeRuleDesc(log.rule_desc) || log.rule_name || '—')
-    : (log.dns_query || log.hostname || log.wifi_event || '—')
+    : (log.router_fields?.script ? [log.router_fields.script, log.router_fields.name || log.router_fields.pool || log.router_fields.list].filter(Boolean).join(' · ') : log.dns_query || log.hostname || log.wifi_event || '—')
 
   const infoTitle = log.log_type === 'firewall'
     ? (normalizeRuleDesc(log.rule_desc) || log.rule_name || '')

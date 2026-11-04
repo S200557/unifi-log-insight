@@ -8,7 +8,10 @@ import SettingsMCP from './SettingsMCP'
 import SettingsSecurity from './SettingsSecurity'
 import SettingsAPI from './SettingsAPI'
 import SettingsIntegrations from './SettingsIntegrations'
-import SetupWizard from './SetupWizard'
+import LegacySetupWizard from './SetupWizard'
+import MikroTikSetup from './MikroTikSetup'
+import { MIKROTIK } from '../platform'
+const SetupWizard = MIKROTIK ? MikroTikSetup : LegacySetupWizard
 import ReleaseNotesModal, { isNewerVersion } from './ReleaseNotesModal'
 
 function getVlanId(iface) {
@@ -106,7 +109,7 @@ export default function SettingsOverlay({ onClose, startInReconfig, initialSecti
 
   useEffect(() => {
     fetchConfig().then(setConfig).catch(() => {})
-    fetchUniFiSettings().then(data => {
+    if (!MIKROTIK) fetchUniFiSettings().then(data => {
       setUnifiSettings(data)
       if (data?.enabled) {
         fetchUniFiNetworkConfig().then(setNetConfig).catch(() => {})
@@ -124,7 +127,7 @@ export default function SettingsOverlay({ onClose, startInReconfig, initialSecti
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [sidebarOpen])
 
-  const sections = BASE_SECTIONS
+  const sections = BASE_SECTIONS.filter(s => !MIKROTIK || s.id !== 'firewall')
 
   const savedWanInterfaces = config?.wan_interfaces || []
   const labels = config?.interface_labels || {}
@@ -174,7 +177,7 @@ export default function SettingsOverlay({ onClose, startInReconfig, initialSecti
 
   const reloadAll = () => {
     fetchConfig().then(setConfig).catch(() => {})
-    fetchUniFiSettings().then(data => {
+    if (!MIKROTIK) fetchUniFiSettings().then(data => {
       setUnifiSettings(data)
       if (data?.enabled) fetchUniFiNetworkConfig().then(setNetConfig).catch(() => {})
     }).catch(() => {})
@@ -330,6 +333,7 @@ export default function SettingsOverlay({ onClose, startInReconfig, initialSecti
             ) : (
               <>
                 {activeSection === 'wan-networks' && (
+                  MIKROTIK ? <MikroTikSetup embedded onComplete={reloadAll} /> :
                   <SettingsWanNetworks
                     unifiEnabled={unifiEnabled}
                     unifiSettings={unifiSettings}

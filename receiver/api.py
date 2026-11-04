@@ -19,6 +19,7 @@ from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
 
 from deps import APP_VERSION
+from router_platform import is_mikrotik
 from routes.logs import router as logs_router
 from routes.stats import router as stats_router
 from routes.setup import router as setup_router
@@ -54,7 +55,7 @@ logger = logging.getLogger('api')
 
 # ── App ──────────────────────────────────────────────────────────────────────
 
-app = FastAPI(title="UniFi Log Insight API", version=APP_VERSION)
+app = FastAPI(title="MikroTik Insights Plus API" if is_mikrotik() else "UniFi Log Insight API", version=APP_VERSION)
 
 class DualCORSMiddleware(BaseHTTPMiddleware):
     """Two-tier CORS: restricted for cookie-auth, permissive for token-auth.
@@ -138,6 +139,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         ('/api/config/retention','settings.read', 'settings.write'),
         ('/api/config',          'settings.read', 'settings.write'),
         ('/api/setup/',          'settings.read', 'settings.write'),
+        ('/api/mikrotik/config', 'settings.read', 'settings.write'),
+        ('/api/mikrotik/',       'system.read', None),
         ('/api/firewall/',       'firewall.read', 'firewall.write'),
         ('/api/unifi/',          'unifi.read', None),
         ('/api/logs',            'logs.read', None),
@@ -253,7 +256,8 @@ class _QuietAccessFilter(logging.Filter):
 @app.on_event("startup")
 def _configure_access_logging():
     logging.getLogger("uvicorn.access").addFilter(_QuietAccessFilter())
-    log_proxy_token()
+    if not is_mikrotik():
+        log_proxy_token()
 
 
 # ── Route Registration ───────────────────────────────────────────────────────
@@ -264,7 +268,11 @@ app.include_router(tokens_router)
 app.include_router(logs_router)
 app.include_router(stats_router)
 app.include_router(setup_router)
-app.include_router(unifi_router)
+if is_mikrotik():
+    from routes.mikrotik import router as mikrotik_router
+    app.include_router(mikrotik_router)
+else:
+    app.include_router(unifi_router)
 app.include_router(abuseipdb_router)
 app.include_router(health_router)
 app.include_router(threats_router)
@@ -319,6 +327,8 @@ if os.path.exists(STATIC_DIR):
     async def serve_spa(path: str):
         # URL-decode, resolve, and ensure the path stays inside STATIC_DIR
         decoded = unquote(path)
+        if decoded == 'api' or decoded.startswith('api/'):
+            raise HTTPException(status_code=404, detail='API endpoint not found')
         resolved = (_static_root / decoded).resolve()
         if resolved != _static_root and not str(resolved).startswith(str(_static_root) + os.sep):
             return FileResponse(_static_root / "index.html", headers=_NO_CACHE)

@@ -1,23 +1,27 @@
 ## Stage 1: Build React UI
 FROM node:20-slim AS ui-builder
 WORKDIR /ui
+ARG ROUTER_PLATFORM=mikrotik
+ENV VITE_ROUTER_PLATFORM=$ROUTER_PLATFORM
 COPY ui/package.json ui/package-lock.json* ./
-RUN npm install
+RUN npm ci --no-audit --no-fund
 COPY ui/ ./
 RUN npm run build
 
 ## Stage 2: Runtime
 FROM ubuntu:24.04
+ARG ROUTER_PLATFORM=mikrotik
 
-LABEL org.opencontainers.image.title="UniFi Log Insight"
-LABEL org.opencontainers.image.description="Real-time log analysis for UniFi routers — syslog, GeoIP, threat intelligence, and a live dashboard in a single container"
-LABEL org.opencontainers.image.source="https://github.com/jmasarweh/unifi-log-insight"
-LABEL org.opencontainers.image.url="https://github.com/jmasarweh/unifi-log-insight"
+LABEL org.opencontainers.image.title="MikroTik Insights Plus"
+LABEL org.opencontainers.image.description="Passive RouterOS and Jotne syslog analysis, telemetry, GeoIP, flows, and threat intelligence"
+LABEL org.opencontainers.image.source="https://github.com/S200557/unifi-log-insight"
+LABEL org.opencontainers.image.url="https://github.com/S200557/unifi-log-insight"
 LABEL org.opencontainers.image.licenses="BSL-1.1"
 LABEL org.opencontainers.image.vendor="jmasarweh"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV ROUTER_PLATFORM=$ROUTER_PLATFORM
 ENV PGDATA=/var/lib/postgresql/data
 
 # Install PostgreSQL 16 + Python 3 + supervisor + cron

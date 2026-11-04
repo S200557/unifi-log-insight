@@ -6,10 +6,11 @@ import SankeyChart from './SankeyChart'
 import TopIPPairs from './TopIPPairs'
 import HostSlidePanel from './HostSlidePanel'
 import DateRangePicker from './DateRangePicker'
+import { MIKROTIK } from '../platform'
 
 const ZoneMatrix = lazy(() => import('./ZoneMatrix'))
 
-const ACTIONS = ['allow', 'block']
+const ACTIONS = MIKROTIK ? ['allow', 'block', 'redirect', 'unknown'] : ['allow', 'block']
 const DIRECTIONS = ['inbound', 'outbound', 'inter_vlan', 'nat', 'local', 'vpn']
 const SUB_TABS = [
   { key: 'sankey', label: 'Flow Graph' },

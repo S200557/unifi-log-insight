@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS logs (
     abuse_is_tor BOOLEAN,
     src_device_name TEXT,
     dst_device_name TEXT,
+    router_host TEXT,
+    router_serial TEXT,
+    router_topics TEXT[],
+    router_fields JSONB,
     raw_log     TEXT NOT NULL,
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );

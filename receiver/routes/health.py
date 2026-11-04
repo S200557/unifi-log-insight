@@ -89,6 +89,8 @@ def health():
             'oldest_log_at': oldest.isoformat() if oldest else None,
             'latest_log': latest.isoformat() if latest else None,
             'retention_days': retention_days,
+            'router_platform': os.environ.get('ROUTER_PLATFORM', 'unifi'),
+            'ingestion_mode': os.environ.get('INGESTION_MODE', 'live'),
             'abuseipdb': abuseipdb,
             'maxmind_last_update': maxmind_last_update,
             'maxmind_next_update': maxmind_next_update,

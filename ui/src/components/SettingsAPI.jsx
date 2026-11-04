@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import useApiTokens from '../hooks/useApiTokens'
 import TokenCreatedModal from './TokenCreatedModal'
 import TokenList from './TokenList'
+import { MIKROTIK } from '../platform'
 
 const INPUT_CLS = 'px-3 py-1.5 bg-black border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
 
@@ -44,7 +45,7 @@ export default function SettingsAPI() {
   const [listStatus, setListStatus] = useState(null) // { type: 'saved'|'error', text }
   const [revoking, setRevoking] = useState(null) // token ID being revoked
 
-  const visibleScopes = API_SCOPES.filter(s => s.clients.includes(tokenClientType))
+  const visibleScopes = API_SCOPES.filter(s => s.clients.includes(tokenClientType) && (!MIKROTIK || (!s.id.startsWith('firewall.') && s.id !== 'unifi.read')))
 
   useEffect(() => { reload() }, [reload])
 
@@ -150,7 +151,7 @@ export default function SettingsAPI() {
                 className={INPUT_CLS}
               >
                 <option value="api">API</option>
-                <option value="extension">Extension</option>
+                {!MIKROTIK && <option value="extension">Extension</option>}
                 <option value="mcp">MCP</option>
               </select>
             </div>
@@ -242,7 +243,7 @@ export default function SettingsAPI() {
         </div>
       </section>
 
-      <section>
+      {!MIKROTIK && <section>
         <div className="rounded-lg border border-gray-700 bg-gray-950 p-5">
           <h3 className="text-base text-gray-200 font-medium mb-2">Browser Extension</h3>
           <p className="text-sm text-gray-400">
@@ -254,7 +255,7 @@ export default function SettingsAPI() {
             </a>
           </p>
         </div>
-      </section>
+      </section>}
 
       {showTokenModal && (
         <TokenCreatedModal

@@ -92,6 +92,7 @@ export function resolveIpSublines({ asn_name, abuse_hostnames, direction, src_ip
 }
 
 export const LOG_TYPE_STYLES = {
+  telemetry: 'bg-teal-500/15 text-teal-400 border-teal-500/30',
   firewall: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
   dns: 'bg-violet-500/15 text-violet-400 border-violet-500/30',
   dhcp: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',

@@ -145,8 +145,40 @@ INSERT_COLUMNS = [
     'abuse_is_whitelisted', 'abuse_is_tor',
     'src_device_name', 'dst_device_name',
     'remote_ip',
+    'router_host', 'router_serial', 'router_topics', 'router_fields',
     'raw_log',
 ]
+
+
+def _log_values(parsed):
+    return tuple(Json(parsed[col]) if col == 'router_fields' and isinstance(parsed.get(col), dict)
+                 else parsed.get(col) for col in INSERT_COLUMNS)
+
+
+def _learn_mikrotik_clients(cur, logs):
+    """Reuse the upstream name cache so all existing name/flow joins work.
+
+    The historical internal table name remains for schema compatibility.
+    Names are observations, never a trust or firewall authorization signal.
+    """
+    for log in logs:
+        if not log.get('router_host') or log.get('log_type') != 'dhcp':
+            continue
+        if not log.get('mac_address') or not log.get('src_ip'):
+            continue
+        if log.get('dhcp_event') == 'deassigned':
+            cur.execute('UPDATE unifi_clients SET ip=NULL, updated_at=NOW() WHERE mac=%s AND ip=%s AND last_seen<=%s',
+                        [log['mac_address'], log['src_ip'], log['timestamp']])
+            continue
+        if log.get('dhcp_event') != 'assigned':
+            continue
+        cur.execute('''INSERT INTO unifi_clients (mac,ip,hostname,network,last_seen)
+                       VALUES (%s,%s,%s,%s,%s) ON CONFLICT (mac) DO UPDATE SET
+                       ip=EXCLUDED.ip, hostname=COALESCE(EXCLUDED.hostname,unifi_clients.hostname),
+                       network=EXCLUDED.network,last_seen=EXCLUDED.last_seen,updated_at=NOW()
+                       WHERE unifi_clients.last_seen IS NULL OR EXCLUDED.last_seen>=unifi_clients.last_seen''',
+                    [log['mac_address'],log['src_ip'],log.get('hostname'),
+                     log.get('router_fields', {}).get('dhcp_server'),log['timestamp']])
 
 INSERT_SQL = f"""
     INSERT INTO logs ({', '.join(INSERT_COLUMNS)})
@@ -376,6 +408,15 @@ class Database:
                 raw_log     TEXT NOT NULL,
                 created_at  TIMESTAMPTZ DEFAULT NOW()
             )""",
+            # RouterOS metadata stays in the same retained log stream.
+            "ALTER TABLE logs ADD COLUMN IF NOT EXISTS router_host TEXT",
+            "ALTER TABLE logs ADD COLUMN IF NOT EXISTS router_serial TEXT",
+            "ALTER TABLE logs ADD COLUMN IF NOT EXISTS router_topics TEXT[]",
+            "ALTER TABLE logs ADD COLUMN IF NOT EXISTS router_fields JSONB",
+            "ALTER TABLE logs ALTER COLUMN interface_in TYPE TEXT",
+            "ALTER TABLE logs ALTER COLUMN interface_out TYPE TEXT",
+            "CREATE INDEX IF NOT EXISTS idx_logs_router_time ON logs (router_host,timestamp DESC) WHERE router_host IS NOT NULL",
+            "CREATE INDEX IF NOT EXISTS idx_logs_script_time ON logs ((router_fields->>'script'),timestamp DESC) WHERE log_type='telemetry'",
             # Performance indexes from init.sql
             "CREATE INDEX IF NOT EXISTS idx_logs_timestamp    ON logs (timestamp DESC)",
             "CREATE INDEX IF NOT EXISTS idx_logs_src_ip       ON logs (src_ip)",
@@ -1021,11 +1062,12 @@ END $$;""",
 
     def insert_log(self, parsed: dict):
         """Insert a single parsed log entry."""
-        values = tuple(parsed.get(col) for col in INSERT_COLUMNS)
+        values = _log_values(parsed)
 
         with self.get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(INSERT_SQL, values)
+                _learn_mikrotik_clients(cur, [parsed])
 
     def _execute_log_insert(self, cur, logs: list[dict]):
         """Shared insert helper: build rows and execute_batch on a caller-owned cursor.
@@ -1034,9 +1076,10 @@ END $$;""",
         transaction boundary.  Used by both syslog (with fallback) and Pi-hole
         (strict, no fallback) insert paths.
         """
-        rows = [tuple(log.get(col) for col in INSERT_COLUMNS) for log in logs]
+        rows = [_log_values(log) for log in logs]
         cur.execute("SET LOCAL statement_timeout = '30s'")
         extras.execute_batch(cur, INSERT_SQL, rows, page_size=100)
+        _learn_mikrotik_clients(cur, logs)
         return len(rows)
 
     def insert_logs_batch(self, logs: list[dict]):
@@ -1059,13 +1102,14 @@ END $$;""",
                           batch_err, len(logs))
             inserted = 0
             dropped = 0
-            rows = [tuple(log.get(col) for col in INSERT_COLUMNS) for log in logs]
-            for row in rows:
+            rows = [_log_values(log) for log in logs]
+            for row, log in zip(rows, logs):
                 try:
                     with self.get_conn() as conn:
                         with conn.cursor() as cur:
                             cur.execute("SET LOCAL statement_timeout = '10s'")
                             cur.execute(INSERT_SQL, row)
+                            _learn_mikrotik_clients(cur, [log])
                     inserted += 1
                 except Exception as row_err:
                     dropped += 1

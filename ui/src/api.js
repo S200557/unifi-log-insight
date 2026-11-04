@@ -1,4 +1,5 @@
 const BASE = '/api'
+import { MIKROTIK } from './platform'
 
 function buildQS(params) {
   const qs = new URLSearchParams()
@@ -455,6 +456,8 @@ export async function testPiholeConnection(params) {
 // ── Version Check ────────────────────────────────────────────────────────────
 
 export async function fetchLatestRelease(currentVersion) {
+  // Upstream releases do not update the MikroTik adaptation.
+  if (MIKROTIK) return null
   // Beta builds: include pre-releases when finding the latest
   if (currentVersion && currentVersion.includes('-beta')) {
     const resp = await fetch(
@@ -478,6 +481,12 @@ export async function fetchLatestRelease(currentVersion) {
   if (!appRelease) return null
   return { tag: appRelease.tag_name, url: appRelease.html_url, body: appRelease.body || '' }
 }
+
+export const fetchMikroTikStatus = () => apiFetch(`${BASE}/mikrotik/status`)
+export const fetchMikroTikConfig = () => apiFetch(`${BASE}/mikrotik/config`)
+export const fetchMikroTikResources = (params = {}) => apiFetch(`${BASE}/mikrotik/resources?${buildQS(params)}`)
+export const fetchMikroTikTelemetry = (params = {}) => apiFetch(`${BASE}/mikrotik/telemetry?${buildQS(params)}`)
+export const saveMikroTikConfig = body => apiFetch(`${BASE}/mikrotik/config`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 
 export async function fetchAllReleases() {
   const resp = await fetch(

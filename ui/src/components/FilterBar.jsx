@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { fetchServices, fetchInterfaces, fetchProtocols } from '../api'
 import { getInterfaceName, DIRECTION_ICONS, DIRECTION_COLORS, LOG_TYPE_STYLES, ACTION_STYLES, timeRangeToDays, filterVisibleRanges } from '../utils'
 import DateRangePicker from './DateRangePicker'
+import { MIKROTIK } from '../platform'
 
-const LOG_TYPES = ['firewall', 'dns', 'dhcp', 'wifi', 'system']
+const LOG_TYPES = ['firewall', 'dns', 'dhcp', 'wifi', 'system', ...(MIKROTIK ? ['telemetry'] : [])]
 const TIME_RANGES = [
   { value: '1h', label: '1h' },
   { value: '6h', label: '6h' },

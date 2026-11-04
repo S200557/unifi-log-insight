@@ -393,7 +393,7 @@ ALLOWED_DIMENSIONS = {
     'src_ip', 'dst_ip', 'dst_port', 'protocol',
     'service_name', 'direction', 'interface_in', 'interface_out',
 }
-_VALID_ACTIONS = {'allow', 'block'}
+_VALID_ACTIONS = {'allow', 'block', 'redirect', 'unknown'}
 _VALID_DIRECTIONS = {'inbound', 'outbound', 'inter_vlan', 'nat', 'local', 'vpn'}
 
 

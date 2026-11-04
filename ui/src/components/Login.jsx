@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { authLogin } from '../api'
+import { MIKROTIK } from '../platform'
 
 const INPUT_CLS = 'w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 shadow-sm transition focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400'
 const DARK_INPUT_CLS = 'w-full rounded-md border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 shadow-sm transition focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 disabled:cursor-not-allowed disabled:bg-black/70 disabled:text-zinc-600'
@@ -64,7 +65,7 @@ export default function Login({ onSuccess, isHttps, proxyTrusted, isEmbedded, th
                 <div className="space-y-3">
                   <p className={`text-4xl font-black tracking-[0.08em] ${isDark ? 'text-zinc-100' : 'text-slate-700'}`}>Insights Plus</p>
                   <div className="flex items-center justify-center">
-                    <div className={`w-fit border-t px-6 pt-3 text-sm font-semibold uppercase tracking-[0.35em] ${isDark ? 'border-zinc-700 text-zinc-400' : 'border-slate-300 text-slate-500'}`}>UniFi SIEM</div>
+                    <div className={`w-fit border-t px-6 pt-3 text-sm font-semibold uppercase tracking-[0.35em] ${isDark ? 'border-zinc-700 text-zinc-400' : 'border-slate-300 text-slate-500'}`}>{MIKROTIK ? 'MikroTik SIEM' : 'UniFi SIEM'}</div>
                   </div>
                 </div>
                 <p className={`mt-8 text-sm font-medium ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>{version ? `v${version}` : '\u00A0'}</p>

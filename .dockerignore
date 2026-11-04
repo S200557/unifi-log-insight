@@ -7,3 +7,7 @@ __pycache__
 README.md
 ui/node_modules
 ui/dist
+.venv
+.staging
+receiver/.pytest_cache
+**/.pytest_cache

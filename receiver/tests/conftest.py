@@ -12,6 +12,7 @@ def _reset_parser_globals(monkeypatch):
     monkeypatch.setattr(parsers, 'WAN_IP_BY_IFACE', {})
     monkeypatch.setattr(parsers, 'WAN_INTERFACES', {'ppp0'})
     monkeypatch.setattr(parsers, 'INTERFACE_LABELS', {})
+    monkeypatch.setattr(parsers, 'VPN_INTERFACES', set())
 
 
 @pytest.fixture(autouse=True)

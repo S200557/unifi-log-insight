@@ -1,0 +1,51 @@
+services:
+  insights:
+    build:
+      context: .
+      args:
+        ROUTER_PLATFORM: mikrotik
+    image: mikrotik-insights-plus:dev
+    container_name: mikrotik-insights-staging
+    restart: unless-stopped
+    shm_size: 256mb
+    mem_limit: 2g
+    cpus: 2
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    ports:
+      - '${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8091}:8000'
+      - '${SYSLOG_BIND:-127.0.0.1}:${SYSLOG_PORT:-1515}:514/udp'
+    volumes:
+      - mikrotik_pgdata:/var/lib/postgresql/data
+      - ./maxmind:/app/maxmind
+    environment:
+      ROUTER_PLATFORM: mikrotik
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?Set a private database password}'
+      SECRET_KEY: '${SECRET_KEY:?Set a private application encryption key}'
+      TZ: '${TZ:-Asia/Riyadh}'
+      LOG_LEVEL: INFO
+      AUTH_ENABLED: '${AUTH_ENABLED:-true}'
+      RDNS_ENABLED: '${RDNS_ENABLED:-false}'
+      INGESTION_MODE: '${INGESTION_MODE:-live}'
+      RETENTION_DAYS: '${RETENTION_DAYS:-14}'
+      DNS_RETENTION_DAYS: '${DNS_RETENTION_DAYS:-14}'
+      MAXMIND_ACCOUNT_ID: '${MAXMIND_ACCOUNT_ID:-}'
+      MAXMIND_LICENSE_KEY: '${MAXMIND_LICENSE_KEY:-}'
+      ABUSEIPDB_API_KEY: '${ABUSEIPDB_API_KEY:-}'
+      DB_HOST: '${DB_HOST:-127.0.0.1}'
+      DB_PORT: '${DB_PORT:-5432}'
+      DB_NAME: '${DB_NAME:-unifi_logs}'
+      DB_USER: '${DB_USER:-unifi}'
+      DB_PASSWORD: '${DB_PASSWORD:-${POSTGRES_PASSWORD}}'
+      DB_SSLMODE: '${DB_SSLMODE:-prefer}'
+    healthcheck:
+      test: ['CMD', 'python3', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+volumes:
+  mikrotik_pgdata:

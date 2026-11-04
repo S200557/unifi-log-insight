@@ -1,154 +1,56 @@
-<p align="center">
-  <img src="ui/public/image.png" alt="UniFi Insights Plus" />
-</p>
+# MikroTik Insights Plus
 
-<h1 align="center">UniFi Insights Plus <a href="https://github.com/jmasarweh/UniFi-Insights-Plus/stargazers"><img src="https://img.shields.io/github/stars/jmasarweh/UniFi-Insights-Plus" alt="GitHub Stars" /></a></h1>
+A passive **RouterOS syslog and Jotne exporter** adaptation of [UniFi Insights Plus](https://github.com/jmasarweh/UniFi-Insights-Plus), based on upstream **3.7.2**. It keeps the existing live log stream, dashboard, Sankey flows, interface matrix, host drill-down, filters, threat map, IP enrichment, CSV export, retention, settings backup/restore, authentication, API tokens and MCP.
 
-<p align="center">
-  <a href="https://github.com/jmasarweh/UniFi-Insights-Plus/releases/latest"><img src="https://img.shields.io/github/v/release/jmasarweh/UniFi-Insights-Plus" alt="GitHub Release" /></a>
-  <a href="https://github.com/jmasarweh/UniFi-Insights-Plus/pkgs/container/unifi-log-insight"><img src="https://img.shields.io/badge/downloads-41k+-blue" alt="Downloads" /></a>
-  <a href="https://chromewebstore.google.com/detail/unifi-insights-plus/dlpkbnjhbhkijfkgnmnbohbokdfoimge"><img src="https://img.shields.io/chrome-web-store/v/dlpkbnjhbhkijfkgnmnbohbokdfoimge?label=chrome-extension" alt="Chrome Web Store" /></a>
-  <a href="https://addons.mozilla.org/en-US/firefox/addon/unifi-insights-plus/"><img src="https://img.shields.io/amo/v/unifi-insights-plus?label=firefox-addon" alt="Firefox Add-ons" /></a>
-  <a href="https://github.com/jmasarweh/UniFi-Insights-Plus/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/jmasarweh/UniFi-Insights-Plus/test.yml?branch=main&label=tests" alt="Tests" /></a>
-  <a href="https://github.com/jmasarweh/UniFi-Insights-Plus/actions/workflows/docker-publish.yml"><img src="https://img.shields.io/github/actions/workflow/status/jmasarweh/UniFi-Insights-Plus/docker-publish.yml?label=docker%20build" alt="Docker Build" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSL%201.1-orange" alt="License" /></a>
-</p>
+It adds native RouterOS parsing and a **Router telemetry** page for CPU, memory, disk, uptime, health sensors, interface rates and structured exporter records. Device names come from observed DHCP leases. There is **no router management client** in the MikroTik workflow: setup does not require router credentials and cannot edit router rules or scripts.
 
-<p align="center">
-  Real-time log analysis for UniFi routers and gateways - captures syslog over UDP, parses firewall, DHCP, Wi-Fi, and system events, enriches them with GeoIP, ASN, threat intelligence, and reverse DNS, then serves everything through a live Dashboard.
-</p>
+[Design and feature mapping](docs/MikroTik-design.md) · [Original upstream README](docs/UPSTREAM_README.md) · [License](LICENSE)
 
-<p align="center">
-  Single Docker container. No external dependencies. Zero data collection.
-</p>
+## Run
 
-<p align="center">
-  <strong>For full documentation, visit <a href="https://insightsplus.dev/docs">insightsplus.dev/docs</a></strong>
-</p>
+Requirements: Docker with Compose, and an existing RouterOS syslog source. The supported formats are RouterOS headerless/default, BSD/RFC3164 and ISO8601 syslog over UDP, plus Jotne 5.6 structured messages. TCP/TLS and CEF framing are not implemented.
 
-<p align="center">
-  <a href="#-features">Features</a> · <a href="#-prerequisites">Prerequisites</a> · <a href="#-app-screenshots">Screenshots</a>
-</p>
+1. Use the `mikrotik-adaptation` branch.
+2. Copy `.env.mikrotik.example` to a private file **outside the checkout**, protect it with mode 600, and replace both secret placeholders with independent random values. Keep that file and captured syslog out of Git.
+3. Build and start:
 
----
+```sh
+docker compose -p mikrotik-insights \
+  --env-file /private/path/mikrotik.env \
+  -f docker-compose.mikrotik.yml up -d --build
+```
 
-## ✨ Features
+The default bindings are **127.0.0.1:8091** for the UI and **127.0.0.1:1515/udp** for syslog. The container listens on UDP 514 internally. These loopback bindings suit isolated staging. An SSH tunnel can expose the preview locally:
 
-| Feature | Description |
-|---------|-------------|
-| **Live Log Stream** | Auto-refreshing table with expandable details, copy-to-clipboard, and intelligent pause/resume |
-| **Flow View** | Interactive Sankey flow graph and Zone Matrix showing how traffic moves between sources, services, and destinations. Click any node to cross-filter, drill into a host slide panel for per-IP breakdowns, and save/load custom views |
-| **Threat Map** | Interactive world map showing where threats and blocked outbound traffic originate. Switch between heatmap and cluster views, filter by time range, and click any point to inspect individual logs |
-| **Dashboard** | Traffic breakdowns, top blocked/allowed countries and IPs, top threats with ASN/city/rDNS/categories, top devices, services, DNS queries |
-| **Filters** | Log type, time range, action, direction, VPN badge, interface, service, country, ASN, threat score, IP, rule name, text search |
-| **IP Enrichment** | GeoIP (country, city, coordinates), ASN, reverse DNS via MaxMind GeoLite2 with scheduled auto-update and hot-reload |
-| **AbuseIPDB Integration** | Threat scoring (23 categories, Tor detection, usage type), daily blacklist pre-seeding, automatic backfill |
-| **Syslog Receiver** | UDP 514 listener parsing firewall, DHCP, Wi-Fi, DNS, and system events |
-| **Multi-WAN & Direction** | Per-interface WAN IP mapping for failover/load-balanced setups. Auto-classifies traffic as inbound, outbound, inter-VLAN, local, or VPN |
-| **VPN Detection** | Auto-detects VPN interfaces (WireGuard, OpenVPN, Teleport, Site Magic) with badge assignment, labels, and CIDRs |
-| **UniFi Integration** | Network discovery, device name resolution, and firewall syslog management via **UniFi OS** (API key) or **self-hosted controllers** (username/password) |
-| **Pi-hole Integration** | DNS query logging via Pi-hole v6+ API |
-| **AdGuard Home** | DNS query logging support (coming soon) |
-| **Firewall Syslog Manager** | Zone matrix with bulk toggle — enable syslog on firewall rules without leaving the app (UniFi OS) |
-| **AI Agent Integration** *(MCP)* | Connect Claude Desktop, Claude Code, Gemini CLI (or any http mcp client) via the [Model Context Protocol (MCP)](https://insightsplus.dev/docs) to query your network data & setup through natural conversation |
-| **Device Names** | Friendly names from UniFi clients/devices with historical backfill |
-| **Theming & Preferences** | Dark/light theme, country display format, IP subline (show ASN beneath IPs) |
-| **Interface Labels** | Color-coded labels for traffic flow, applied retroactively to all logs |
-| **CSV Export** | Download filtered results up to 100K rows |
-| **Retention** | Configurable per log type (60-day default, 10-day DNS) and cleanup time (HH:MM, container-local). Adjustable via Settings or env vars |
-| **Backup & Restore** | Export/import all settings as JSON |
-| **External DB Support** | Run against an external PostgreSQL instead of the embedded one — compatible with Coolify, Unraid, managed Postgres, and any platform where bundled databases aren't allowed. [Setup guide](https://insightsplus.dev/docs/external-database) · [Migration guide for existing users](https://github.com/jmasarweh/UniFi-Insights-Plus/wiki/External-PostgreSQL-Migration-Guide) |
-| **DNS Ready** | Full DNS query parsing ([requires configuration](https://insightsplus.dev/docs)) |
-| **Mobile Responsive** | Collapsible filters, full-width table on small screens |
-| **Setup Wizard** | Two paths: **UniFi API** (auto-detects WAN, VLANs, topology) or **Log Detection** (discovers interfaces from live traffic) |
+```sh
+ssh -N -L 8091:127.0.0.1:8091 your-staging-server
+```
 
+Open `http://127.0.0.1:8091`. Authentication defaults to enabled. Complete the initial local administrator setup, then select the exact WAN interface names and optional labels under **Syslog & networks**. RouterOS names such as `bridge`, `pppoe-out1` and `MGMT-50` are accepted; names do not imply VLAN IDs or trust.
 
+To receive live router logs, deliberately choose the intended private host binding and authorized syslog destination. Do not replace an existing Splunk destination or change router logging without reviewing and approving that separate network change. The software itself never performs that change.
 
-## 📋 Prerequisites
+## Data and optional features
 
-- **Docker** and **Docker Compose**
-- **UniFi Router** (or any UniFi gateway that supports remote syslog)
-- **Zone-based firewall** (not legacy/classic). The Firewall Syslog Manager and firewall policy API require the zone-based policy engine. If you are still on the legacy/classic firewall, migrate via **Settings > Policy Engine** in your UniFi controller before setting up ULI.
-- **MaxMind GeoLite2 account** ([free signup](https://www.maxmind.com/en/geolite2/signup)) - for GeoIP/ASN lookups
-- **AbuseIPDB API key** ([free tier](https://www.abuseipdb.com/register?plan=free), recommended but optional) - for threat scoring
+- The MikroTik Compose file uses a separate PostgreSQL volume and 14-day event/DNS retention by default. Telemetry follows the same retained event stream. Settings allow retention changes and cleanup.
+- Firewall events without an evidenced action remain **unknown**. Known Jotne prefixes are recognized, and exact prefix meanings can be configured locally. Logged-event counts are not bandwidth totals.
+- Interface rates use successive exported byte counters. Resets, duplicate timestamps and gaps over 15 minutes produce no rate.
+- Every exporter family and field is preserved. Optional routing, VPN, Wi-Fi and UPnP tables can be empty when no corresponding records arrive. Neighbor attributes are assembled from Jotne's separate messages.
+- Local MaxMind databases or optional MaxMind account credentials enable country/ASN data. An optional AbuseIPDB key enables threat scores. Reverse DNS is available but defaults off in this Compose file. Credentials can be supplied through the private environment file; the corresponding variables are passed into the container.
+- Pi-hole integration remains available. UniFi controller setup, policy-write controls and its browser extension are excluded. No AdGuard integration is claimed.
+- External PostgreSQL remains supported through `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_SSLMODE`; the entrypoint disables embedded PostgreSQL for a remote database. Historical default database/cache names are preserved for compatibility.
+- The dashboard is a focused syslog application, not an implementation of the Splunk search language or every custom Splunk dashboard.
 
-> **UniFi Network 10.x: enable SIEM-mode activity logging.** Open **Settings > Integrations > Syslog** in the UniFi Network controller (on the default site: `https://<controller-hostname-or-ip>/network/default/integrations/syslog`; multi-site controllers use their own site id in place of `default`). Under **Activity Logging** choose **SIEM Server** and point it at the Insights Plus host, UDP port 514. Then select the log categories to forward. As of UniFi Network 10.6.106 they are **Client**, **Security Detections**, **VPN** and **Firewall Default Policy** (older 10.x builds may label them differently). Insights Plus needs **Firewall Default Policy** for firewall logs; the other categories are optional and forward those event types as well. If Insights Plus shows raw packet counts but nothing parses, disable SIEM, reboot the gateway, re-enable it, and re-check the categories.
+## Development and replay
 
-**Minimum host resources (estimated):**
+Ubuntu is the development/build/staging environment. The backend runtime is Python 3.12 in the Ubuntu 24.04 image; the UI uses the upstream locked npm dependencies. Run `pytest` from `receiver/`, and `npm test` from `ui/`. For the MikroTik UI use `VITE_ROUTER_PLATFORM=mikrotik npm run build` or `npm run dev` with that variable set.
 
-- **CPU:** 4 cores/threads minimum (PostgreSQL + receiver + API run concurrently)
-- **Memory/RAM:** minimum of 4 GB of RAM
-- **Disk:** 10 GB free for the database volume (`pgdata`) at minimum
+`tools/replay_syslog.py` sends a private Splunk JSONL export containing `event_epoch`, `host` and `_raw` to the staging UDP listener, preserving original timestamps:
 
-These are baseline estimates for a small home network. Higher log volume or longer retention will require more CPU cores, RAM and Disk space.
-> **Docker log rotation** is enabled by default in `docker-compose.yml` (10 MB max, 5 files). If you use a custom compose file, add a [`logging:` section](https://docs.docker.com/compose/compose-file/compose-file-v3/#logging) to prevent unbounded container log growth.
+```sh
+python3 tools/replay_syslog.py /private/path/sample.jsonl --rate 100
+```
 
+Set `INGESTION_MODE=staging-replay` for that environment; the UI then clearly labels replayed history. Do not commit replay data. An isolated loopback-only staging instance may explicitly disable authentication in its private environment file; keep it enabled before broader exposure.
 
-## 📸 App Screenshots
-
-#### Desktop
-
-##### Log Stream
-<img alt="Log Stream" src="docs/screenshots/log-stream.png" />
-
-##### Expanded Log Detail
-<img alt="Expanded Log Detail" src="docs/screenshots/expanded-log-detail.png" />
-
-##### Dashboard
-<img alt="Dashboard" src="docs/screenshots/dashboard.png" />
-
-##### Dashboard — Top IPs
-<img alt="Dashboard Top IPs" src="docs/screenshots/dashboard-top-ips.png" />
-
-##### Flow View — Sankey Chart
-<img alt="Flow View" src="docs/screenshots/flow-view.png" />
-
-##### Flow View — Host Detail
-<img alt="Flow View Detail" src="docs/screenshots/flow-view-detail.png" />
-
-##### Flow View — Zone Matrix
-<img alt="Flow View Zone Matrix" src="docs/screenshots/flow-view-zone-matrix.png" />
-
-##### Threat Map — Heatmap
-<img alt="Threat Map Heatmap" src="docs/screenshots/threat-map-heatmap.png" />
-
-##### Threat Map — Clusters
-<img alt="Threat Map Clusters" src="docs/screenshots/threat-map-clusters.png" />
-
-##### Threat Map — Event Detail Sidebar
-<img alt="Threat Map Event Detail Sidebar" src="docs/screenshots/threat-map-event-detail-sidebar.png" />
-
-##### Firewall Syslog Matrix
-<img alt="Firewall Syslog Matrix" src="docs/screenshots/firewall-syslog-matrix.png" />
-
-##### Settings
-<img alt="Settings" src="docs/screenshots/settings.png" />
-
-##### Dark Mode
-<img alt="Dark Mode" src="docs/screenshots/dark-mode.png" />
-
-#### Mobile
-
-##### Log Stream
-<img alt="Main Mobile View" src="docs/screenshots/main-mobile-view.png" />
-
-##### Flow View
-<img alt="Mobile View" src="docs/screenshots/mobile-view.png" />
-
-##### Dashboard
-<img alt="Dashboard Mobile View" src="docs/screenshots/dashboard-mobile-view.png" />
-
-##### Threat Map
-<img alt="Map Mobile View" src="docs/screenshots/map-mobile-view.png" />
-
-## 📄 License
-
-Licensed under the [Business Source License 1.1](LICENSE) (BSL 1.1).
-
-**You may** freely use, modify, and self-host UniFi Log Insight for non-commercial and internal business purposes.
-
-**You may not** offer the Licensed Work to third parties on a hosted or embedded basis to compete with the Licensor's paid offerings without a commercial license.
-
-Each version converts to **Apache License 2.0** four years after its release date.
-
-Exceptions to the BSL terms may be granted on a case-by-case basis — contact the Licensor for inquiries.
+The original UniFi profile remains available for upstream regression work with `ROUTER_PLATFORM=unifi` and the corresponding UI build variable. The Docker build argument selects both stages consistently. Existing upstream attribution and **Business Source License 1.1** remain intact.

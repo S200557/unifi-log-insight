@@ -13,6 +13,7 @@ from psycopg2.extras import RealDictCursor, Json
 from db import Database, get_config, set_config, has_logs, encrypt_api_key, decrypt_api_key, parse_retention_time
 from deps import get_conn, put_conn, enricher_db, unifi_api, signal_receiver, APP_VERSION, ttl_cache
 from unifi_api import UniFiAPI
+from router_platform import default_wan_interfaces, is_mikrotik
 from firewall_policy_matcher import invalidate_cache as invalidate_fw_cache
 from parsers import (
     VPN_PREFIX_BADGES, VPN_INTERFACE_PREFIXES, VPN_BADGE_CHOICES,
@@ -52,7 +53,8 @@ def get_current_config():
     """Return current system configuration."""
     from enrichment import _resolve_rdns_enabled
     return {
-        "wan_interfaces": get_config(enricher_db, "wan_interfaces", ["ppp0"]),
+        "wan_interfaces": get_config(enricher_db, "wan_interfaces", default_wan_interfaces()),
+        "router_platform": "mikrotik" if is_mikrotik() else "unifi",
         "interface_labels": get_config(enricher_db, "interface_labels", {}),
         "setup_complete": get_config(enricher_db, "setup_complete", False),
         "config_version": get_config(enricher_db, "config_version", 1),
@@ -233,7 +235,7 @@ def complete_setup(body: dict):
         raise HTTPException(status_code=400, detail="wan_interfaces required")
 
     # Read current WAN config before overwriting (for backfill comparison)
-    current_wan = set(get_config(enricher_db, "wan_interfaces", ["ppp0"]))
+    current_wan = set(get_config(enricher_db, "wan_interfaces", default_wan_interfaces()))
 
     set_config(enricher_db, "wan_interfaces", body["wan_interfaces"])
     set_config(enricher_db, "interface_labels", body.get("interface_labels", {}))
@@ -365,10 +367,10 @@ def list_interfaces():
     if not isinstance(labels, dict):
         logger.warning("Expected dict for interface_labels config, got %s — using empty", type(labels).__name__)
         labels = {}
-    raw_wans = get_config(enricher_db, "wan_interfaces", ["ppp0"])
+    raw_wans = get_config(enricher_db, "wan_interfaces", default_wan_interfaces())
     if not isinstance(raw_wans, (list, tuple, set)):
         logger.warning("Expected list for wan_interfaces config, got %s — using default", type(raw_wans).__name__)
-        raw_wans = ["ppp0"]
+        raw_wans = default_wan_interfaces()
     wan_list = set(raw_wans)
     vpn_networks = get_config(enricher_db, "vpn_networks", {})
     if not isinstance(vpn_networks, dict):
@@ -394,7 +396,7 @@ def list_interfaces():
         }
         if iface in wan_list:
             entry['iface_type'] = 'wan'
-        elif any(iface.startswith(p) for p in VPN_INTERFACE_PREFIXES):
+        elif iface in vpn_networks or any(iface.startswith(p) for p in VPN_INTERFACE_PREFIXES):
             entry['iface_type'] = 'vpn'
             vpn_cfg = vpn_networks.get(iface, {})
             if vpn_cfg.get('badge'):
@@ -449,6 +451,7 @@ _PROCESSING_KEYS = {'wifi_processing_enabled', 'system_processing_enabled'}
 # Keys that are always exported (user-configured settings)
 _EXPORTABLE_KEYS = [
     'wan_interfaces', 'interface_labels', 'vpn_networks',
+    'mikrotik_rule_actions',
     'setup_complete', 'config_version',
     'wizard_path', 'unifi_enabled', 'unifi_host', 'unifi_site',
     'unifi_verify_ssl', 'unifi_poll_interval', 'unifi_features',
@@ -542,6 +545,12 @@ def import_config(body: dict):
             if isinstance(val, str):
                 val = [v.strip() for v in val.split(',') if v.strip()]
             elif not isinstance(val, list):
+                failed_keys.append(key)
+                continue
+        elif key == 'mikrotik_rule_actions':
+            if (not isinstance(val, dict) or len(val)>500 or
+                not all(isinstance(k,str) and 0<len(k)<=100 and not any(ord(c)<32 for c in k)
+                        and v in ('allow','block','redirect','unknown') for k,v in val.items())):
                 failed_keys.append(key)
                 continue
         elif key == 'vpn_networks':

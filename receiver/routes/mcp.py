@@ -12,6 +12,7 @@ from psycopg2.extras import RealDictCursor
 
 from db import get_config, set_config
 from deps import APP_VERSION, get_conn, put_conn, enricher_db, unifi_api
+from router_platform import is_mikrotik
 from routes import logs as logs_routes
 from routes import stats as stats_routes
 from routes import setup as setup_routes
@@ -592,6 +593,17 @@ _TOOL_HANDLERS = {
     'list_interfaces':        lambda _: setup_routes.list_interfaces(),
 }
 
+_UNIFI_ONLY_TOOLS = {'list_firewall_policies', 'set_firewall_syslog',
+                     'list_unifi_clients', 'list_unifi_devices', 'get_unifi_status'}
+if is_mikrotik():
+    from routes import mikrotik as mikrotik_routes
+    _TOOL_HANDLERS.update({
+        'get_mikrotik_status': lambda _: mikrotik_routes.status(),
+        'get_mikrotik_resources': lambda args: mikrotik_routes.resources(host=str(args.get('host','')), hours=int(args.get('hours',24))),
+        'list_mikrotik_clients': lambda _: mikrotik_routes.clients(),
+    })
+    _TOOL_SCOPES.update({name: ['system.read'] for name in ('get_mikrotik_status','get_mikrotik_resources','list_mikrotik_clients')})
+
 # Runtime guard: ensure _TOOL_HANDLERS and _TOOL_SCOPES stay in sync.
 _handler_keys = set(_TOOL_HANDLERS.keys())
 _scope_keys = set(_TOOL_SCOPES.keys())
@@ -606,6 +618,8 @@ if _handler_keys != _scope_keys:
 
 
 def _handle_tool_call(name: str, args: dict) -> dict:
+    if is_mikrotik() and name in _UNIFI_ONLY_TOOLS:
+        raise KeyError('Tool unavailable in the passive MikroTik profile')
     handler = _TOOL_HANDLERS.get(name)
     if not handler:
         raise KeyError(f"Unknown tool: {name}")
@@ -656,13 +670,21 @@ def _handle_request(payload: dict, token_info: dict | None) -> dict | None:
             "protocolVersion": negotiated_version,
             "capabilities": capabilities,
             "serverInfo": {
-                "name": "unifi-log-insight",
+                "name": "mikrotik-insights-plus" if is_mikrotik() else "unifi-log-insight",
                 "version": APP_VERSION,
             },
         }, rpc_id)
 
     if method == 'tools/list':
-        return _jsonrpc_result({"tools": _tools_catalog()}, rpc_id)
+        tools = _tools_catalog()
+        if is_mikrotik():
+            tools = [t for t in tools if t['name'] not in _UNIFI_ONLY_TOOLS]
+            tools.extend([
+                {'name':'get_mikrotik_status','description':'Observed RouterOS devices and exporter families; no router management access.','inputSchema':{'type':'object','properties':{}}},
+                {'name':'get_mikrotik_resources','description':'Read retained RouterOS resource samples and interface counter rates.','inputSchema':{'type':'object','properties':{'host':{'type':'string'},'hours':{'type':'integer','minimum':1,'maximum':336}}}},
+                {'name':'list_mikrotik_clients','description':'Client names observed in DHCP syslog; this does not establish trust.','inputSchema':{'type':'object','properties':{}}},
+            ])
+        return _jsonrpc_result({"tools": tools}, rpc_id)
 
     if method == 'tools/call':
         tool_name = params.get('name')

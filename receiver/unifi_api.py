@@ -85,6 +85,12 @@ class UniFiAPI:
 
     def _resolve_config(self):
         """Load settings: env var > system_config DB > default."""
+        from router_platform import is_mikrotik
+        if is_mikrotik():
+            self.enabled = False
+            self.host = ''
+            self.api_key = ''
+            return
         self.host = (os.environ.get('UNIFI_HOST') or
                      self._db.get_config('unifi_host', '')).rstrip('/')
         self.api_key = (os.environ.get('UNIFI_API_KEY') or

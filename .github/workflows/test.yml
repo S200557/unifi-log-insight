@@ -69,3 +69,8 @@ jobs:
 
       - name: Run tests
         run: npx vitest run
+
+      - name: Build MikroTik UI
+        run: npm run build
+        env:
+          VITE_ROUTER_PLATFORM: mikrotik

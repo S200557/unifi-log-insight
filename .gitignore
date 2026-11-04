@@ -47,6 +47,8 @@ agents.md
 .vscode
 .doc
 .worktrees/
+.staging/
+.venv/
 unifi_logs_backup.dump
 nul
 null

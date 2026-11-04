@@ -28,6 +28,7 @@ from enrichment import Enricher
 from backfill import BackfillTask
 from blacklist import BlacklistFetcher
 from unifi_api import UniFiAPI
+from router_platform import is_mikrotik
 from pihole_api import PiHolePoller
 from routes.auth import auth_cleanup
 
@@ -206,6 +207,12 @@ class SyslogReceiver:
                 return
 
             self.stats['parsed'] += 1
+            if 'router_fields' in parsed and not parsed.get('router_host'):
+                # Headerless RouterOS UDP messages identify the source by the
+                # actual datagram sender, never by an assumed router address.
+                import ipaddress
+                sender = ipaddress.ip_address(addr[0])
+                parsed['router_host'] = str(sender.ipv4_mapped or sender) if sender.version == 6 else str(sender)
 
             # Filter disabled log types before enrichment
             log_type = parsed.get('log_type')
@@ -552,7 +559,7 @@ def main():
     # Load system configuration and apply to parsers module
     # Check for existing user migration
     setup_complete = get_config(db, "setup_complete", None)
-    if setup_complete is None:
+    if setup_complete is None and not is_mikrotik():
         # Any firewall log means an existing installation
         if has_logs(db, 'firewall'):
             # Auto-migrate existing installation with safe defaults

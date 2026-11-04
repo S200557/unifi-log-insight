@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8000'
+      '/api': process.env.API_PROXY_TARGET || (process.env.VITE_ROUTER_PLATFORM === 'mikrotik' ? 'http://127.0.0.1:8091' : 'http://localhost:8000')
     }
   },
   build: {

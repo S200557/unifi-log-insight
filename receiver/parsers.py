@@ -77,6 +77,7 @@ WIFI_ASSOC  = re.compile(r'STA\s+([0-9a-f:]+)\s+.*?(associated|disassociated|dea
 # Module-level config (set by main.py after DB initialization)
 WAN_INTERFACES = {'ppp0'}  # Default fallback
 INTERFACE_LABELS = {}  # Default to empty (raw names)
+VPN_INTERFACES = set()
 
 # VPN interface prefix → auto-detected badge abbreviation (max 8 chars)
 VPN_PREFIX_BADGES = {
@@ -269,7 +270,7 @@ def derive_direction(iface_in: str, iface_out: str, rule_name: str, src_ip: str 
         return 'outbound'
     if not is_wan_in and not is_wan_out and iface_in != iface_out:
         # VPN tunnel ↔ LAN is VPN traffic, not inter-VLAN
-        is_vpn = any(
+        is_vpn = iface_in in VPN_INTERFACES or iface_out in VPN_INTERFACES or any(
             (iface_in or '').startswith(p) or (iface_out or '').startswith(p)
             for p in VPN_INTERFACE_PREFIXES
         )
@@ -498,6 +499,10 @@ def parse_log(raw_log: str) -> dict | None:
     
     Returns None if the log can't be parsed (header doesn't match).
     """
+    from router_platform import is_mikrotik
+    if is_mikrotik():
+        from mikrotik_parser import parse_routeros
+        return parse_routeros(raw_log)
     original_raw = raw_log
 
     m = SYSLOG_HEADER.match(raw_log)
@@ -562,15 +567,20 @@ def reload_config_from_db(db):
     Updates module-level WAN_INTERFACES, INTERFACE_LABELS, WAN_IPS,
     WAN_IP_BY_IFACE and _wan_ip.
     """
-    global WAN_INTERFACES, INTERFACE_LABELS, _wan_ip, WAN_IPS, WAN_IP_BY_IFACE
+    global WAN_INTERFACES, INTERFACE_LABELS, _wan_ip, WAN_IPS, WAN_IP_BY_IFACE, VPN_INTERFACES
     from db import get_config, get_wan_ips_from_config
 
     # Read everything into locals first, then publish all globals together:
     # main.py may run this on the scheduler thread while derive_direction()
     # reads them on the receiver thread, so no reader should see a half-
     # reloaded mix, and the published WAN_IPS set is never mutated in place.
-    wan_interfaces = set(get_config(db, 'wan_interfaces', ['ppp0']))
+    from router_platform import default_wan_interfaces, is_mikrotik
+    wan_interfaces = set(get_config(db, 'wan_interfaces', default_wan_interfaces()))
+    if is_mikrotik():
+        import mikrotik_parser
+        mikrotik_parser.RULE_ACTIONS = get_config(db, 'mikrotik_rule_actions', {}) or {}
     interface_labels = get_config(db, 'interface_labels', {})
+    VPN_INTERFACES = set(get_config(db, 'vpn_networks', {}) or {})
     # WAN_IPS from wan_ip_by_iface (preferred) or legacy wan_ips
     wan_ips = set(get_wan_ips_from_config(db))
     # Authoritative wan_ip_by_iface map (gates WAN_LOCAL auto-learn and lets

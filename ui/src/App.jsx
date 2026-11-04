@@ -1,6 +1,9 @@
 import React, { Suspense, useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react'
 import LogStream from './components/LogStream'
-import SetupWizard from './components/SetupWizard'
+import LegacySetupWizard from './components/SetupWizard'
+import MikroTikSetup from './components/MikroTikSetup'
+import { MIKROTIK, PRODUCT_NAME } from './platform'
+const SetupWizard = MIKROTIK ? MikroTikSetup : LegacySetupWizard
 import SettingsOverlay from './components/SettingsOverlay'
 import { DashboardSkeleton } from './components/Dashboard'
 import { ThreatMapSkeleton } from './components/ThreatMap'
@@ -9,6 +12,7 @@ import FlowViewSkeleton from './components/FlowViewSkeleton'
 const Dashboard = React.lazy(() => import('./components/Dashboard'))
 const ThreatMap = React.lazy(() => import('./components/ThreatMap'))
 const FlowView = React.lazy(() => import('./components/FlowView'))
+const RouterTelemetry = React.lazy(() => import('./components/RouterTelemetry'))
 import Login from './components/Login'
 import { fetchHealth, fetchConfig, fetchLatestRelease, dismissUpgradeModal, dismissVpnToast, fetchInterfaces, fetchUiSettings, updateUiSettings, fetchUniFiSettings, fetchAuthStatus, fetchAuthMe, authLogout, setAuthExpiredHandler } from './api'
 import { loadInterfaceLabels } from './utils'
@@ -70,6 +74,7 @@ const TABS = [
   { id: 'flow-view', label: 'Flow View', shortLabel: 'Flow' },
   { id: 'threat-map', label: 'Threat Map', shortLabel: 'Map' },
   { id: 'dashboard', label: 'Dashboard', shortLabel: 'Dashboard' },
+  ...(MIKROTIK ? [{ id: 'router', label: 'Router telemetry', shortLabel: 'Router' }] : []),
 ]
 
 function formatShortDate(isoStr) {
@@ -313,7 +318,7 @@ export default function App() {
           setShowWizard(true)
         }
         // Check for auto-migrated users (empty labels = defaults)
-        if (cfg.setup_complete !== false &&
+        if (!MIKROTIK && cfg.setup_complete !== false &&
             Object.keys(cfg.interface_labels || {}).length === 0 &&
             !localStorage.getItem('migration_banner_dismissed')) {
           setShowMigrationBanner(true)
@@ -321,7 +326,7 @@ export default function App() {
         // Log-detection deprecation modal (Phase 1 transition)
         // Shows once per session for log-detection users, permanently
         // dismissible via checkbox.  Removal target: phase 2.
-        if (cfg.setup_complete === true &&
+        if (!MIKROTIK && cfg.setup_complete === true &&
             cfg.wizard_path === 'log_detection' &&
             !cfg.upgrade_v2_dismissed) {
           setShowUpgradeModal(true)
@@ -748,7 +753,7 @@ export default function App() {
                 <line x1="36" y1="84" x2="64" y2="84" stroke="#14b8a6" strokeWidth="5.2" strokeLinecap="round"/>
                 <text x="50" y="110" textAnchor="middle" fontFamily="-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif" fontWeight="800" fontSize="19" letterSpacing="0.16em" fill="#0d9488">PLUS</text>
               </svg>
-              <span className="hidden sm:inline text-sm font-semibold text-gray-200">Insights Plus</span>
+              <span className="hidden sm:inline text-sm font-semibold text-gray-200">{PRODUCT_NAME}</span>
             </div>
           )}
 
@@ -862,9 +867,12 @@ export default function App() {
       </header>
 
       {/* Content */}
+      {MIKROTIK && health?.ingestion_mode === 'staging-replay' && <div className="px-4 py-2 text-xs text-amber-300 bg-amber-500/10 border-b border-amber-700/30">Staging replay of historical syslog · Router configuration unchanged</div>}
+      {MIKROTIK && activeTab === 'threat-map' && !health?.maxmind_last_update && <div className="px-4 py-2 text-xs text-gray-300 bg-teal-500/10 border-b border-teal-700/30">GeoIP databases are not installed. Add local MaxMind databases or configure MaxMind downloads to place events on the map.</div>}
       <main className="flex-1 overflow-hidden">
         {activeTab === 'logs' && <LogStream version={health?.version} latestRelease={latestRelease} maxFilterDays={maxFilterDays} drillFilters={logsDrill} onDrillConsumed={clearLogsDrill} interfaces={allInterfaces} onPauseChange={onLogsPauseChange} uiSettings={uiSettings} />}
         <Suspense fallback={<DashboardSkeleton />}>
+          {activeTab === 'router' && <RouterTelemetry />}
           {activeTab === 'dashboard' && <Dashboard maxFilterDays={maxFilterDays} />}
         </Suspense>
         <Suspense fallback={<FlowViewSkeleton />}>

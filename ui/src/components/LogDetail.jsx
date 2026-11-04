@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { FlagIcon, getInterfaceName, decodeThreatCategories, isPrivateIP, formatServiceName, normalizeRuleDesc } from '../utils'
 import { getThreatLevel } from '../lib/threatPresentation'
 import { parseRuleName, IDLESS_DOCS_URL, IDLESS_DOCS_LINK_TEXT } from '../lib/firewallPolicyLogging'
+import { MIKROTIK } from '../platform'
 import { fetchAbuseIPDBStatus, enrichIP, matchFirewallPolicyForLog, patchFirewallPolicy } from '../api'
 import SyslogToggle from './SyslogToggle'
 import CopyButton from './CopyButton'
@@ -80,7 +81,7 @@ export default function LogDetail({ log, hiddenColumns = new Set() }) {
   }, [canPrefetchBudget])
 
   // Match firewall log to policy for syslog toggle
-  const canMatchPolicy = log?.log_type === 'firewall' && log?.rule_name && parseRuleName(log.rule_name)
+  const canMatchPolicy = !MIKROTIK && log?.log_type === 'firewall' && log?.rule_name && parseRuleName(log.rule_name)
   useEffect(() => {
     if (!canMatchPolicy) return
     setPolicyLoading(true)
@@ -252,6 +253,12 @@ export default function LogDetail({ log, hiddenColumns = new Set() }) {
   }
 
   // Service (shown for non-firewall; firewall has its own detailed service section below)
+  if (displayLog.router_host) {
+    sections.push(<div key="router"><span className="text-gray-400 text-[12px] uppercase tracking-wider">RouterOS source</span><div className="text-gray-300 text-sm mt-0.5">{displayLog.router_host}{displayLog.router_serial ? ` · ${displayLog.router_serial}` : ''}</div></div>)
+  }
+  if (displayLog.router_fields && Object.keys(displayLog.router_fields).length) {
+    sections.push(<div key="router_fields" className="col-span-full"><span className="text-gray-400 text-[12px] uppercase tracking-wider">RouterOS fields</span><pre className="text-xs text-gray-300 overflow-auto max-h-80 p-3 mt-1 bg-gray-950 rounded-lg">{JSON.stringify(displayLog.router_fields,null,2)}</pre></div>)
+  }
   if (displayLog.service_name && displayLog.log_type !== 'firewall') {
     sections.push(
       <div key="service_general">
@@ -265,7 +272,7 @@ export default function LogDetail({ log, hiddenColumns = new Set() }) {
   if (displayLog.log_type === 'firewall') {
     // Parsed rule breakdown (hidden when rule column is hidden)
     if (!hiddenColumns.has('rule')) {
-      const parsed = parseRuleName(displayLog.rule_name)
+      const parsed = MIKROTIK ? null : parseRuleName(displayLog.rule_name)
       if (parsed) {
         const actionDisplay = parsed.action
           || (displayLog.rule_action && displayLog.rule_action.charAt(0).toUpperCase() + displayLog.rule_action.slice(1))
