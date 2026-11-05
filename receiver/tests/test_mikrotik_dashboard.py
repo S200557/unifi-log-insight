@@ -2,7 +2,7 @@
 import pytest
 import parsers
 from mikrotik_parser import parse_routeros
-from mikrotik_dashboard import logs_source, presentation, device_identity
+from mikrotik_dashboard import logs_source, presentation, device_identity, group_devices
 from ip_identity import IdentityConfig, annotate_record
 
 
@@ -68,3 +68,14 @@ def test_dhcp_comment_wins_and_same_mac_different_vlan_is_not_guessed(monkeypatc
     row={'src_ip':'198.51.100.2','mac_address':'02:00:00:00:00:01','interface_in':'pppoe-out1'}
     annotate_record(cfg,row)
     assert not row.get('src_device_name')
+
+
+def test_device_rollup_combines_dual_stack_but_preserves_segment_labels():
+    inventory=[{'mac':'02:00:00:00:00:01','name':'Phone LAN','interface':'bridge','addresses':['192.0.2.10','2001:db8:1::10']},
+               {'mac':'02:00:00:00:00:01','name':'Phone IoT','interface':'iot30','addresses':['2001:db8:30::10']}]
+    rows=[{'ip':ip,'count':count,'blocked':1,'mac_address':'02:00:00:00:00:01','interface_in':iface}
+          for ip,count,iface in [('2001:db8:1::10',8,'bridge'),('192.0.2.10',5,'bridge'),('2001:db8:30::10',3,'iot30')]]
+    result=group_devices(rows,inventory)
+    assert len(result)==2 and result[0]['name']=='Phone LAN' and result[0]['count']==13
+    assert result[0]['blocked']==2 and result[0]['ip']=='192.0.2.10'
+    assert result[1]['name']=='Phone IoT' and result[1]['count']==3

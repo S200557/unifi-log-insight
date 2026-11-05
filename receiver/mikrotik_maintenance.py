@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 
 from psycopg2.extras import Json
-from db import Database, build_conn_params
+from db import Database, build_conn_params, wait_for_postgres
 from parsers import reload_config_from_db
 from mikrotik_parser import parse_routeros
 
@@ -77,5 +77,6 @@ if __name__ == '__main__':
     args=parser.parse_args()
     data=json.loads(args.inventory.read_text())
     validate_inventory(data)
-    db=Database(build_conn_params());db.connect()
+    params=build_conn_params();wait_for_postgres(params)
+    db=Database(params);db.connect()
     print(json.dumps(apply(db,data,args.backfill)))

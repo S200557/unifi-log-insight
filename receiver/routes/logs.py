@@ -323,7 +323,7 @@ _LOG_DETAIL_SQL = """
         ) as threat_categories,
         """ + device_name_coalesce('c1', 'd1', 'src_device_name', 'l.src_device_name') + """,
         """ + device_name_coalesce('c2', 'd2', 'dst_device_name', 'l.dst_device_name') + f"""
-    FROM {logs_source()} l
+    FROM {logs_source('l')}
     LEFT JOIN ip_threats t1 ON t1.ip = l.src_ip
         AND NOT (l.src_ip = ANY(%s::inet[]))
     LEFT JOIN ip_threats t2 ON t2.ip = l.dst_ip

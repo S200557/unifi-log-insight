@@ -87,3 +87,20 @@ def device_identity(devices, ip, mac=None, interface=None):
     if len(names) != 1:
         return None
     return next(d for d in candidates if d.get('name') in names)
+
+
+def group_devices(rows, inventory, fallback_name=lambda ip: None):
+    """Combine verified dual-stack identities; keep per-segment names distinct."""
+    groups = {}
+    for row in rows:
+        device = device_identity(inventory,row['ip'],row.get('mac_address'),row.get('interface_in'))
+        key = (device['mac'],device.get('interface')) if device else ('ip',row['ip'])
+        if key not in groups:
+            groups[key] = dict(row,name=device['name'] if device else fallback_name(row['ip']),addresses=[row['ip']])
+        else:
+            group = groups[key]
+            group['count'] += row['count']; group['blocked'] += row['blocked']
+            group['addresses'].append(row['ip'])
+            if ':' not in row['ip']:
+                group['ip'] = row['ip']
+    return sorted(groups.values(),key=lambda row:-row['count'])[:8]

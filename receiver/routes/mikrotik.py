@@ -57,12 +57,10 @@ def firewall_dashboard(hours: int = Query(24, ge=1, le=336),
                         MAX(interface_in) AS interface_in,COUNT(*) AS count,
                         COUNT(*) FILTER(WHERE rule_action='block') AS blocked
                         FROM {source} WHERE {where} AND direction='outbound'
-                        GROUP BY src_ip ORDER BY count DESC LIMIT 8''', params)
+                        GROUP BY src_ip ORDER BY count DESC LIMIT 1000''', params)
     cfg = load_identity_config(enricher_db)
-    from mikrotik_dashboard import device_identity
-    for row in devices:
-        device = device_identity(cfg.mikrotik_devices, row['ip'], row.get('mac_address'), row.get('interface_in'))
-        row['name'] = device['name'] if device else annotate_ip(cfg,row['ip'])[0]
+    from mikrotik_dashboard import group_devices
+    devices = group_devices(devices,cfg.mikrotik_devices,lambda ip: annotate_ip(cfg,ip)[0])
     categories = {}
     for row in groups:
         # Family is returned by PostgreSQL, not guessed from a prefix suffix.
