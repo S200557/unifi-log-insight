@@ -5,10 +5,35 @@ on:
     branches: [main]
     paths:
       - 'docs/wiki/**'
+      - '.github/workflows/wiki-sync.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  configuration:
+    name: Check wiki configuration
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - name: Check optional wiki token
+        id: check
+        env:
+          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
+        run: |
+          if [ -n "$WIKI_TOKEN" ]; then
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::Wiki sync is not configured: WIKI_TOKEN is absent.'
+            echo 'Wiki sync skipped because the optional WIKI_TOKEN repository secret is not configured. Documentation remains available in docs/wiki. Add the secret and initialize this repository wiki to enable publishing.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   sync:
+    needs: configuration
+    if: needs.configuration.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
