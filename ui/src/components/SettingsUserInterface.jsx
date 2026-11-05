@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { fetchUiSettings, updateUiSettings } from '../api'
+import { MIKROTIK } from '../platform'
 
 const COUNTRY_OPTIONS = [
   { value: 'flag_name', label: 'Flag + Country Code' },
@@ -31,10 +32,11 @@ export default function SettingsUserInterface({ onSaved }) {
       if (activeTheme && activeTheme !== data.ui_theme) {
         data.ui_theme = activeTheme
       }
+      if (MIKROTIK) data.ui_theme = 'light'
       setSettings(data)
     }).catch(err => {
       console.error('Failed to load UI settings:', err)
-      setSettings({ ui_country_display: 'flag_name', ui_ip_subline: 'none', ui_theme: 'dark', ui_block_highlight: 'on', ui_block_highlight_threshold: 0, ui_csv_export_unifi_raw_log: 'off' })
+      setSettings({ ui_country_display: 'flag_name', ui_ip_subline: 'none', ui_theme: MIKROTIK ? 'light' : 'dark', ui_block_highlight: 'on', ui_block_highlight_threshold: 0, ui_csv_export_unifi_raw_log: 'off' })
     })
   }, [])
 
@@ -168,9 +170,9 @@ export default function SettingsUserInterface({ onSaved }) {
           {/* Theme */}
           <div className="p-5">
             <p className="text-base text-gray-200 font-medium">Theme</p>
-            <p className="text-sm text-gray-500 mb-3">Switch between dark and light mode.</p>
+            <p className="text-sm text-gray-500 mb-3">{MIKROTIK ? 'Light appearance for your network dashboard.' : 'Switch between dark and light mode.'}</p>
             <div className="space-y-2">
-              {THEME_OPTIONS.map(opt => (
+              {THEME_OPTIONS.filter(opt => !MIKROTIK || opt.value === 'light').map(opt => (
                 <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"

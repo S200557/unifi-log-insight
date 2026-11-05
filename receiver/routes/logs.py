@@ -1,3 +1,5 @@
+from router_platform import is_mikrotik
+from mikrotik_dashboard import logs_source
 """Log CRUD, export, and service endpoints."""
 
 import csv
@@ -76,13 +78,13 @@ def get_logs(
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             # Count total
-            cur.execute(f"SELECT COUNT(*) as total FROM logs WHERE {where}", params)
+            cur.execute(f"SELECT COUNT(*) as total FROM {logs_source()} WHERE {where}", params)
             total = cur.fetchone()['total']
 
             # Fetch page, enriching with live device names from unifi_clients + unifi_devices
             cur.execute(
                 f"""WITH page AS (
-                        SELECT * FROM logs WHERE {where}
+                        SELECT * FROM {logs_source()} WHERE {where}
                         ORDER BY {sort_col} {sort_dir} LIMIT %s OFFSET %s
                     )
                     SELECT page.*,
@@ -239,7 +241,7 @@ def get_logs_aggregate(
 
     sql = f"""
         SELECT {', '.join(select_parts)}
-        FROM logs
+        FROM {logs_source()}
         WHERE {where}
         GROUP BY {sql_expr}
         {having_sql}
@@ -320,8 +322,8 @@ _LOG_DETAIL_SQL = """
             END
         ) as threat_categories,
         """ + device_name_coalesce('c1', 'd1', 'src_device_name', 'l.src_device_name') + """,
-        """ + device_name_coalesce('c2', 'd2', 'dst_device_name', 'l.dst_device_name') + """
-    FROM logs l
+        """ + device_name_coalesce('c2', 'd2', 'dst_device_name', 'l.dst_device_name') + f"""
+    FROM {logs_source()} l
     LEFT JOIN ip_threats t1 ON t1.ip = l.src_ip
         AND NOT (l.src_ip = ANY(%s::inet[]))
     LEFT JOIN ip_threats t2 ON t2.ip = l.dst_ip
@@ -368,7 +370,7 @@ def get_log_counts_by_type():
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT log_type, COUNT(*) FROM logs WHERE log_type IN ('wifi', 'system') GROUP BY log_type"
+                f"SELECT log_type, COUNT(*) FROM {logs_source()} WHERE log_type IN ('wifi', 'system') GROUP BY log_type"
             )
             rows = cur.fetchall()
         conn.commit()
@@ -496,7 +498,7 @@ def export_csv_endpoint(
         with conn.cursor() as cur:
             cur.execute(
                 f"""WITH filtered AS (
-                        SELECT * FROM logs WHERE {where}
+                        SELECT * FROM {logs_source()} WHERE {where}
                         ORDER BY timestamp DESC LIMIT %s
                     )
                     SELECT {', '.join('f.' + c for c in export_columns)},
@@ -535,7 +537,7 @@ def export_csv_endpoint(
             ]:
                 ip_str = str(row[ip_idx] or '').split('/')[0]
                 name, vlan, vpn_badge = annotate_ip(cfg, ip_str, row[name_idx])
-                if name and not row[name_idx]:
+                if name and (is_mikrotik() or not row[name_idx]):
                     row[name_idx] = name
                 if vlan is not None:
                     row[vlan_idx] = vlan
@@ -567,9 +569,9 @@ def get_services():
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(f"""
                 SELECT DISTINCT service_name
-                FROM logs
+                FROM {logs_source()}
                 WHERE service_name IS NOT NULL
                   AND timestamp > now() - interval '36 hours'
                 ORDER BY service_name
@@ -592,9 +594,9 @@ def get_protocols():
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(f"""
                 SELECT DISTINCT protocol
-                FROM logs
+                FROM {logs_source()}
                 WHERE protocol IS NOT NULL
                   AND timestamp > now() - interval '36 hours'
                 ORDER BY protocol

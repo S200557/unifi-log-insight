@@ -88,8 +88,13 @@ def parse_firewall(body):
     if not p:
         return None
     head = m['head'].strip().rstrip(':').strip()
+    # RouterOS prints the actual custom chain too (e.g. ZT6-INTERNET).
     chain_match = re.search(r'(?:^|\s)(input|forward|output|prerouting|postrouting)$', head, re.I)
-    chain = chain_match[1].lower() if chain_match else None
+    if not chain_match and ' ' in head:
+        chain_match = re.search(r'\s+([A-Za-z0-9_.-]+)$', head)
+    chain = chain_match[1] if chain_match else None
+    if chain and chain.lower() in ('input', 'forward', 'output', 'prerouting', 'postrouting'):
+        chain = chain.lower()
     prefix = head[:chain_match.start()].strip().rstrip(':') if chain_match else head
     src, sport = _endpoint(p['src'])
     dst, dport = _endpoint(p['dst'])
@@ -97,6 +102,11 @@ def parse_firewall(body):
     action, evidence = rule_action(prefix)
     fields = {'chain': chain, 'prefix': prefix, 'action_source': evidence,
               'tcp_flags': p['flags']}
+    if 'icmp' in p['proto'].lower():
+        for key in ('type', 'code'):
+            value = re.search(r'\b' + key + r'[ :=]*(\d+)', p['flags'] or '')
+            if value:
+                fields['icmp_' + key] = int(value[1])
     for key in ('connection-state', 'connection-mark', 'packet-mark'):
         match = re.search(re.escape(key) + r':([^,\s]+)', m['rest'])
         if match:

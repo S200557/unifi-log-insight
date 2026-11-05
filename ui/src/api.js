@@ -49,6 +49,10 @@ export async function fetchLogs(params = {}) {
   return apiFetch(`${BASE}/logs?${buildQS(params)}`)
 }
 
+export async function fetchMikroTikFirewall(params = {}) {
+  return apiFetch(`${BASE}/mikrotik/firewall?${buildQS(params)}`)
+}
+
 export async function fetchLog(id) {
   return apiFetch(`${BASE}/logs/${id}`)
 }

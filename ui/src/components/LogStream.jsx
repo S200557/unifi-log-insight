@@ -4,6 +4,7 @@ import { TR_KEY } from '../utils'
 import FilterBar from './FilterBar'
 import LogTable from './LogTable'
 import Pagination from './Pagination'
+import { MIKROTIK } from '../platform'
 
 const DEFAULT_FILTERS = {
   time_range: '24h',
@@ -46,14 +47,15 @@ const TOGGLEABLE_COLUMNS = [
 export default function LogStream({ version, latestRelease, maxFilterDays, drillFilters, onDrillConsumed, interfaces: prefetchedInterfaces, onPauseChange, uiSettings }) {
   const [filters, setFilters] = useState(() => {
     const restored = { ...DEFAULT_FILTERS }
+    if (MIKROTIK) restored.log_type = 'firewall'
     try {
       restored.time_range = sessionStorage.getItem(TR_KEY) || '24h'
       const savedTypes = localStorage.getItem(STORAGE_KEY)
-      if (savedTypes) restored.log_type = savedTypes
+      if (savedTypes && !MIKROTIK) restored.log_type = savedTypes
       const savedAction = localStorage.getItem(ACTION_STORAGE_KEY)
       if (savedAction) restored.rule_action = savedAction
       const savedDirection = localStorage.getItem(DIRECTION_STORAGE_KEY)
-      if (savedDirection) restored.direction = savedDirection
+      if (savedDirection && (!MIKROTIK || ['inbound','outbound','inbound,outbound'].includes(savedDirection))) restored.direction = savedDirection
     } catch (e) { /* private browsing */ }
     if (drillFilters) {
       return {
@@ -106,7 +108,7 @@ export default function LogStream({ version, latestRelease, maxFilterDays, drill
     fetchLogCountsByType().then(setLogTypeCounts).catch(err => console.error('Failed to load log counts:', err))
   }, [wifiDisabled, systemDisabled])
   const hiddenLogTypes = useMemo(() => {
-    const hidden = new Set()
+    const hidden = new Set(MIKROTIK ? ['dns','dhcp','wifi','system','telemetry'] : [])
     if (!logTypeCounts) return hidden // unknown → keep all visible
     if (wifiDisabled && logTypeCounts.wifi === 0) hidden.add('wifi')
     if (systemDisabled && logTypeCounts.system === 0) hidden.add('system')

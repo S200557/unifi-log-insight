@@ -1,0 +1,112 @@
+/* Light network-console skin, isolated from the upstream UniFi profile. */
+html[data-platform="mikrotik"] { color-scheme:light; }
+[data-platform="mikrotik"] body { background:#f5f7fa; color:#1d2939; }
+[data-platform="mikrotik"] .text-gray-400 { color:#66758a; }
+[data-platform="mikrotik"] .text-gray-300 { color:#475569; }
+[data-platform="mikrotik"] .text-gray-600 { color:#748197; }
+[data-platform="mikrotik"] .text-gray-700 { color:#8996a8; }
+[data-platform="mikrotik"] .bg-black { background:#fff; }
+[data-platform="mikrotik"] .bg-teal-600 { background:#006fff; }
+[data-platform="mikrotik"] .hover\:bg-teal-500:hover { background:#0060df; }
+[data-platform="mikrotik"] .text-teal-400,[data-platform="mikrotik"] .text-teal-500 { color:#006fff; }
+[data-platform="mikrotik"] .ip-clickable:hover span { color:#006fff; }
+.network-shell > header { background:#fff; min-height:60px; padding:0 24px; border-color:#e7ebf0; }
+.network-shell > main,.network-shell main { background:#f5f7fa; }
+.network-header-status { display:flex; align-items:center; gap:7px; color:#53637a; font-size:12px; }
+.network-header-status i,.network-live i { width:6px; height:6px; background:#24a574; border-radius:50%; display:inline-block; }
+.network-workspace { display:flex; flex:1; min-height:0; }
+.network-sidebar { width:208px; flex-shrink:0; background:#fff; border-right:1px solid #e7ebf0; display:flex; flex-direction:column; padding:22px 12px 16px; }
+.network-site { display:flex; align-items:center; gap:10px; padding:0 8px 26px; }
+.network-site-icon { background:#edf5ff; color:#006fff; width:33px; height:33px; border:1px solid #dceaff; border-radius:9px; display:grid; place-items:center; font-size:22px; }
+.network-site strong { display:block; font-size:12px; font-weight:700; color:#29364a; }
+.network-site small { display:block; font-size:10px; color:#8a95a5; margin-top:3px; }
+.network-site i { width:6px; height:6px; background:#2db980; border-radius:50%; margin-left:auto; }
+.network-nav-heading { font-size:9px; letter-spacing:.1em; color:#9aa5b5; padding:0 12px 9px; font-weight:700; }
+.network-sidebar nav { display:flex; flex-direction:column; gap:4px; }
+.network-sidebar button { display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:7px; width:100%; color:#657186; font-size:12px; text-align:left; transition:background .15s,color .15s; }
+.network-sidebar button svg { width:18px; height:18px; flex-shrink:0; }
+.network-sidebar button:hover { background:#f6f8fb; color:#006fff; }
+.network-sidebar button.active { color:#006fff; background:#edf5ff; font-weight:700; }
+.network-sidebar-bottom { margin-top:auto; padding-top:30px; }
+.network-sidebar-note { font-size:11px; font-weight:700; color:#56647a; padding:18px 12px 0; border-top:1px solid #edf0f4; margin-top:14px; line-height:1.9; }
+.network-sidebar-note span { color:#9ba5b3; font-size:10px; font-weight:400; }
+.network-dashboard { height:100%; overflow:auto; padding:28px 32px 22px; color:#1d2939; background:#f5f7fa; }
+.network-heading { display:flex; justify-content:space-between; align-items:center; gap:20px; margin-bottom:25px; }
+.network-eyebrow { color:#99a4b4; letter-spacing:.085em; font-size:9px; font-weight:700; margin-bottom:8px; }
+.network-heading h1 { font-size:25px; line-height:1.3; letter-spacing:-.6px; font-weight:700; color:#263348; margin:0; }
+.network-heading p { color:#8792a3; font-size:12px; margin:7px 0 0; }
+.network-toolbar { display:flex; align-items:center; gap:16px; }
+.network-live { display:flex; align-items:center; gap:6px; color:#68788c; font-size:11px; white-space:nowrap; }
+.network-segmented { display:flex; padding:3px; background:#eaf0f6; border-radius:7px; gap:2px; }
+.network-segmented button { min-width:38px; padding:5px 10px; border-radius:5px; font-size:11px; color:#8390a2; }
+.network-segmented button.active { background:#fff; color:#006fff; box-shadow:0 1px 3px #162b4812; font-weight:700; }
+.network-icon-button { width:30px; height:30px; border:1px solid #e0e6ef; border-radius:7px; background:#fff; color:#73829a; font-size:19px; }
+.network-icon-button:hover { color:#006fff; border-color:#b2d3ff; }
+.network-filters { display:flex; align-items:center; gap:9px; margin-bottom:18px; flex-wrap:wrap; }
+.network-filter-label { font-size:11px; color:#8792a3; margin-right:3px; }
+.network-filters select { background:#fff; border:1px solid #e2e8f0; border-radius:6px; color:#58677d; font-size:11px; padding:7px 27px 7px 10px; cursor:pointer; }
+.network-updated { margin-left:auto; color:#9ba5b3; font-size:10px; }
+.network-card { background:#fff; border:1px solid #e6eaf0; border-radius:10px; box-shadow:0 2px 3px #1d355303; overflow:hidden; }
+.network-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; margin-bottom:18px; }
+.network-metric { padding:18px 20px; }
+.network-metric-top { display:flex; align-items:center; justify-content:space-between; color:#78869a; font-size:12px; }
+.network-metric-icon { display:grid; place-items:center; width:27px; height:27px; border-radius:7px; font-size:17px; }
+.network-metric-icon.blue { color:#006fff; background:#edf5ff; }
+.network-metric-icon.green { color:#20a16b; background:#edfaf3; }
+.network-metric-icon.red { color:#e75a65; background:#fff1f3; }
+.network-metric > strong { display:block; margin:11px 0 6px; font-size:29px; line-height:1.3; font-weight:700; letter-spacing:-.7px; font-variant-numeric:tabular-nums; }
+.network-metric > small { font-size:10px; color:#96a0b0; }
+.network-chart-grid { display:grid; grid-template-columns:minmax(0,2.1fr) minmax(260px,1fr); gap:18px; margin-bottom:18px; }
+.network-card-heading { display:flex; align-items:center; justify-content:space-between; padding:20px 20px 12px; gap:12px; }
+.network-card-heading h2 { font-size:13px; font-weight:700; margin:0; color:#354259; }
+.network-card-heading p { font-size:10px; color:#99a4b4; margin:5px 0 0; }
+.network-legend { display:flex; gap:13px; font-size:10px; color:#8c97a8; }
+.network-legend span { display:flex; align-items:center; gap:5px; white-space:nowrap; }
+.network-legend i { display:inline-block; width:6px; height:6px; border-radius:50%; }
+.network-legend .green { background:#22a06b; }.network-legend .red { background:#ef5261; }
+.network-chart { height:223px; padding:6px 20px 12px; }
+.network-chart-loading,.network-empty { display:flex; align-items:center; justify-content:center; padding:32px 15px; min-height:110px; color:#9ba5b3; font-size:12px; text-align:center; }
+.network-chart-loading { height:100%; background:linear-gradient(100deg,#fff,#f6f8fb,#fff); }
+.network-subtle-icon { color:#a7b8cd; font-size:20px; }
+.network-direction-total { font-size:29px; font-weight:700; padding:0 20px; letter-spacing:-.5px; }
+.network-direction-total small { font-size:10px; font-weight:400; color:#98a3b4; margin-left:8px; letter-spacing:0; }
+.network-direction-bar { display:flex; height:6px; background:#f0f3f8; margin:16px 20px 14px; border-radius:4px; overflow:hidden; gap:2px; }
+.network-direction-bar span:first-child { background:#006fff; }.network-direction-bar span:last-child { background:#73b4ff; }
+.network-direction-row { display:flex; align-items:center; gap:10px; margin:12px 20px; }
+.network-direction-symbol { width:27px; height:27px; background:#edf5ff; border-radius:7px; color:#006fff; display:grid; place-items:center; font-size:17px; }
+.network-direction-symbol.outbound { color:#62a8f6; background:#f1f7fe; }
+.network-direction-row > div:last-child { margin-left:auto; text-align:right; }
+.network-direction-row strong { font-size:11px; display:block; font-weight:700; }
+.network-direction-row small { font-size:9px; color:#9ba6b5; display:block; margin-top:3px; }
+.network-scope-note { border-top:1px solid #f0f3f7; margin-top:15px; padding:11px 20px; font-size:9px; color:#98a4b4; }
+.network-detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-bottom:18px; }
+.network-small-label { font-size:8px; color:#a4adbb; letter-spacing:.07em; font-weight:700; }
+.network-list { padding:0 20px 13px; }
+.network-category-row { display:flex; align-items:center; gap:11px; padding:11px 0; border-bottom:1px solid #f2f4f8; font-size:11px; color:#5d6b80; }
+.network-category-row:last-child { border:0; }
+.network-category-row > strong { margin-left:auto; font-size:11px; font-weight:700; color:#43516a; }
+.network-category-icon { width:25px; height:25px; border-radius:6px; background:#f1f6fd; color:#6a9ddf; display:grid; place-items:center; }
+.network-mini-track { width:66px; height:4px; background:#eff3f9; border-radius:4px; overflow:hidden; }
+.network-mini-track i { display:block; height:100%; background:#65a7fb; border-radius:4px; }
+.network-device-row { display:flex; align-items:center; gap:11px; padding:11px 0; border-bottom:1px solid #f2f4f8; }
+.network-device-row:last-child { border:0; }.network-device-row > div:last-child { margin-left:auto; text-align:right; }
+.network-device-row strong { font-size:11px; font-weight:700; color:#53627a; display:block; }.network-device-row small { display:block; margin-top:3px; font-size:9px; color:#9ba5b3; overflow-wrap:anywhere; }
+.network-device-icon { display:grid; place-items:center; width:28px; height:28px; border:1px solid #e8edf5; border-radius:7px; color:#7c91ae; flex-shrink:0; }
+.network-table-scroll { overflow:auto; }.network-events table { width:100%; border-collapse:collapse; text-align:left; }
+.network-events th { font-size:9px; color:#98a4b4; font-weight:700; padding:10px 17px; background:#fbfcfe; border-block:1px solid #edf1f5; white-space:nowrap; }
+.network-events td { padding:12px 17px; border-bottom:1px solid #f0f3f7; font-size:11px; color:#5f7087; }
+.network-events tbody > tr { cursor:pointer; }.network-events tbody > tr:hover,.network-events tbody > tr.selected { background:#f8fbff; }
+.network-time { white-space:nowrap; font-variant-numeric:tabular-nums; }.network-time small { display:block; margin-top:3px; color:#a4adbb; font-size:9px; }
+.network-direction-pill { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; color:#006fff; font-size:10px; }.network-direction-pill.outbound { color:#5985b7; }
+.network-result { display:inline-flex; align-items:center; gap:5px; font-size:9px; border-radius:5px; padding:4px 6px; color:#8995a6; background:#f2f5f9; white-space:nowrap; }
+.network-result.allow { color:#24946b; background:#edf9f2; }.network-result.block { color:#df5362; background:#fff0f2; }
+.network-rule-category { font-size:10px; color:#637188; }.network-protocol { font-size:8px; color:#a6afbd; display:block; margin-top:3px; }
+.network-footnote { font-size:9px; color:#a0a9b7; margin-top:15px; padding-bottom:4px; }
+.network-error { display:flex; gap:10px; align-items:center; font-size:12px; color:#b64352; background:#fff1f3; border:1px solid #ffd9e0; border-radius:8px; padding:12px 15px; margin-bottom:15px; }
+.network-error button { margin-left:auto; font-weight:700; }
+.network-skeleton { color:#c3cedc; }
+[data-platform="mikrotik"] button:focus-visible,[data-platform="mikrotik"] select:focus-visible,[data-platform="mikrotik"] tr:focus-visible { outline:2px solid #006fff; outline-offset:2px; }
+@media(min-width:1700px) { .network-dashboard { padding-inline:40px; }.network-chart { height:260px; } }
+@media(max-width:1150px) { .network-sidebar { width:178px; }.network-dashboard { padding:22px 20px; }.network-metrics { gap:10px; }.network-metric { padding:16px 14px; }.network-metric > small { font-size:9px; }.network-chart-grid { grid-template-columns:minmax(0,1.7fr) minmax(230px,1fr); } }
+@media(max-width:900px) { .network-sidebar { width:63px; padding:20px 8px; }.network-sidebar button { padding:11px; justify-content:center; }.network-sidebar button span,.network-nav-heading,.network-site,.network-sidebar-note { display:none; }.network-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }.network-chart-grid { grid-template-columns:1fr; }.network-chart { height:230px; }.network-direction-card { display:none; }.network-heading { align-items:flex-start; }.network-toolbar { gap:8px; }.network-detail-grid { gap:12px; }.network-mini-track { width:30px; } }
+@media(max-width:600px) { .network-shell > header { min-height:54px; padding-inline:12px; }.network-header-status { font-size:10px; }.network-sidebar { width:49px; padding:18px 4px; }.network-sidebar button { padding:10px 8px; }.network-dashboard { padding:18px 12px; }.network-heading { flex-direction:column; gap:15px; margin-bottom:18px; }.network-heading h1 { font-size:23px; }.network-toolbar { width:100%; }.network-toolbar .network-live { margin-right:auto; }.network-filters { gap:6px; }.network-filters select { font-size:10px; max-width:125px; }.network-updated { display:none; }.network-metric > strong { font-size:24px; }.network-metric-top { font-size:10px; }.network-metric > small { display:none; }.network-detail-grid { grid-template-columns:1fr; }.network-legend { font-size:8px; gap:8px; }.network-card-heading { padding:16px 14px 12px; }.network-chart { padding-inline:10px; }.network-footnote { line-height:1.6; }.network-events td,.network-events th { padding-inline:12px; } }

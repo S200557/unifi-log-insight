@@ -130,7 +130,7 @@ function LogRow({ log, isExpanded, detailedLog, onToggle, hiddenColumns, colCoun
             </span>
           ) : (log.rule_action || log.dhcp_event || log.wifi_event) ? (
             <span className={`hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase border ${actionStyle}`}>
-              {log.rule_action || log.dhcp_event || log.wifi_event}
+              {log.result_label || log.rule_action || log.dhcp_event || log.wifi_event}
             </span>
           ) : (
             <span className="hidden sm:inline-block text-gray-700 text-[12px]">—</span>
@@ -190,8 +190,8 @@ function LogRow({ log, isExpanded, detailedLog, onToggle, hiddenColumns, colCoun
         </td>
 
         {/* Direction */}
-        <td className={`px-1.5 py-1.5 text-center text-sm ${dirColor}`} title={log.direction}>
-          {dirIcon}
+        <td className={`px-1.5 py-1.5 text-center text-sm ${dirColor}`} title={log.direction_label || log.direction}>
+          {dirIcon}{log.direction_label && <span className="block text-[10px] whitespace-nowrap">{log.direction_label}</span>}
         </td>
 
         {/* Destination */}

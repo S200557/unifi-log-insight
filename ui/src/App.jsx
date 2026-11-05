@@ -3,13 +3,14 @@ import LogStream from './components/LogStream'
 import LegacySetupWizard from './components/SetupWizard'
 import MikroTikSetup from './components/MikroTikSetup'
 import { MIKROTIK, PRODUCT_NAME } from './platform'
+import NetworkSidebar from './components/NetworkSidebar'
 const SetupWizard = MIKROTIK ? MikroTikSetup : LegacySetupWizard
 import SettingsOverlay from './components/SettingsOverlay'
 import { DashboardSkeleton } from './components/Dashboard'
 import { ThreatMapSkeleton } from './components/ThreatMap'
 import FlowViewSkeleton from './components/FlowViewSkeleton'
 
-const Dashboard = React.lazy(() => import('./components/Dashboard'))
+const Dashboard = React.lazy(() => MIKROTIK ? import('./components/MikroTikDashboard') : import('./components/Dashboard'))
 const ThreatMap = React.lazy(() => import('./components/ThreatMap'))
 const FlowView = React.lazy(() => import('./components/FlowView'))
 const RouterTelemetry = React.lazy(() => import('./components/RouterTelemetry'))
@@ -119,7 +120,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#', '').split('?')[0]
     const valid = TABS.map(t => t.id)
-    return valid.includes(hash) ? hash : (MIKROTIK ? 'router' : 'logs')
+    return valid.includes(hash) ? hash : (MIKROTIK ? 'dashboard' : 'logs')
   })
   const [health, setHealth] = useState(null)
   const [latestRelease, setLatestRelease] = useState(null)
@@ -148,6 +149,7 @@ export default function App() {
   const [showUnifiToast, setShowUnifiToast] = useState(false)
   const [showProxyToast, setShowProxyToast] = useState(false)
   const [theme, setTheme] = useState(() => {
+    if (MIKROTIK) return 'light'
     const urlTheme = new URLSearchParams(window.location.search).get('theme')
     if (urlTheme === 'light' || urlTheme === 'dark') return urlTheme
     return localStorage.getItem('ui_theme') || 'dark'
@@ -173,6 +175,7 @@ export default function App() {
   useEffect(() => {
     if (authState === 'loading' || authState === 'login') return
     fetchUiSettings().then(data => {
+      if (MIKROTIK) data.ui_theme = 'light'
       setUiSettings(data)
       if (!localStorage.getItem('ui_theme') && data.ui_theme && data.ui_theme !== initialThemeRef.current) {
         setTheme(data.ui_theme)
@@ -182,7 +185,11 @@ export default function App() {
   }, [authState]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
+    document.documentElement.setAttribute('data-theme', MIKROTIK ? 'light' : theme)
+    if (MIKROTIK) {
+      document.documentElement.setAttribute('data-platform', 'mikrotik')
+      localStorage.setItem('ui_theme', 'light')
+    }
   }, [theme])
 
   // Listen for messages from parent window (when embedded in UniFi iframe)
@@ -205,7 +212,7 @@ export default function App() {
       if (e.source !== window.parent) return
       if (allowedOrigins.size > 0 && !allowedOrigins.has(e.origin)) return
       if (!e.data || !e.data.type) return
-      if (e.data.type === 'uli-theme' && (e.data.theme === 'dark' || e.data.theme === 'light')) {
+      if (!MIKROTIK && e.data.type === 'uli-theme' && (e.data.theme === 'dark' || e.data.theme === 'light')) {
         setTheme(e.data.theme)
       }
       if (e.data.type === 'uli-navigate' && e.data.hash) {
@@ -564,7 +571,7 @@ export default function App() {
   }
 
   return (
-    <div className={`h-dvh flex flex-col bg-gray-950${logsPaused && activeTab === 'logs' ? ' paused-glow' : ''}`}>
+    <div className={`h-dvh flex flex-col bg-gray-950${MIKROTIK ? ' network-shell' : ''}${logsPaused && activeTab === 'logs' ? ' paused-glow' : ''}`}>
       {/* Log-detection deprecation modal — Phase 1 transition, removal target: phase 2 */}
       {showUpgradeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
@@ -758,7 +765,7 @@ export default function App() {
           )}
 
           {/* Tabs */}
-          <nav className="flex items-center gap-0.5 ml-0 sm:ml-4">
+          <nav className={MIKROTIK ? 'hidden' : 'flex items-center gap-0.5 ml-0 sm:ml-4'}>
             {TABS.map(tab => (
               <button
                 type="button"
@@ -781,7 +788,8 @@ export default function App() {
         <div className="flex items-center gap-3">
           {health && (
             <>
-              <div className="hidden md:flex items-center gap-3">
+              {MIKROTIK && <span className="network-header-status"><i /> Live syslog</span>}
+              <div className={MIKROTIK ? 'hidden' : 'hidden md:flex items-center gap-3'}>
                 <span className="text-xs text-gray-400">
                   AbuseIPDB: {formatAbuseIPDB(health.abuseipdb)}
                 </span>
@@ -823,7 +831,7 @@ export default function App() {
               </div>
             </>
           )}
-          <button
+          {!MIKROTIK && <button
             onClick={toggleTheme}
             className="p-1.5 rounded hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
@@ -837,7 +845,7 @@ export default function App() {
                 <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
               </svg>
             )}
-          </button>
+          </button>}
           {authState === 'authenticated' && (
             <button
               onClick={() => { authLogout().catch(() => { /* intentional: always proceed to login screen even if server unreachable */ }); setAuthState('login') }}
@@ -871,7 +879,9 @@ export default function App() {
       {MIKROTIK && health?.ingestion_mode === 'awaiting-router' && <div className="px-4 py-2 text-xs text-amber-300 bg-amber-500/10 border-b border-amber-700/30">Live receiver ready · Waiting for router forwarding · Existing history was replayed</div>}
       {health?.geoip_provider === 'dbip-lite' && <div className="px-4 py-1 text-xs text-gray-400 bg-gray-900 border-b border-gray-800"><a href="https://db-ip.com" target="_blank" rel="noopener noreferrer" className="underline">IP Geolocation by DB-IP</a> · City and ASN Lite · Approximate locations, updated monthly</div>}
       {MIKROTIK && activeTab === 'threat-map' && !health?.maxmind_last_update && <div className="px-4 py-2 text-xs text-gray-300 bg-teal-500/10 border-b border-teal-700/30">GeoIP databases are not installed. Configure local City and ASN databases to place events on the map.</div>}
-      <main className="flex-1 overflow-hidden">
+      <div className={MIKROTIK ? 'network-workspace' : 'contents'}>
+      {MIKROTIK && <NetworkSidebar activeTab={activeTab} onNavigate={setActiveTab} onSettings={()=>setShowSettings(true)}/>}
+      <main className="flex-1 overflow-hidden min-w-0">
         {activeTab === 'logs' && <LogStream version={health?.version} latestRelease={latestRelease} maxFilterDays={maxFilterDays} drillFilters={logsDrill} onDrillConsumed={clearLogsDrill} interfaces={allInterfaces} onPauseChange={onLogsPauseChange} uiSettings={uiSettings} />}
         <Suspense fallback={<DashboardSkeleton />}>
           {activeTab === 'router' && <RouterTelemetry />}
@@ -888,6 +898,7 @@ export default function App() {
           {activeTab === 'threat-map' && <ThreatMap maxFilterDays={maxFilterDays} flyTo={mapFlyTo} onFlyToDone={clearMapFlyTo} />}
         </Suspense>
       </main>
+      </div>
     </div>
   )
 }

@@ -11,10 +11,73 @@ from fastapi import APIRouter, HTTPException, Query
 from psycopg2.extras import Json, RealDictCursor
 
 from db import get_config
+from mikrotik_dashboard import logs_source, presentation
 from deps import enricher_db, get_conn, put_conn, signal_receiver
 
 router = APIRouter(prefix='/api/mikrotik', tags=['MikroTik'])
 IFACE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._:+/@()-]{0,63}$')
+
+
+@router.get('/firewall')
+def firewall_dashboard(hours: int = Query(24, ge=1, le=336),
+                       ip_version: int | None = Query(None),
+                       direction: str | None = Query(None),
+                       result: str | None = Query(None)):
+    """WAN-only counts, charts and event rows use the same SQL source/filter."""
+    from routes.logs import _annotate_logs
+    from ip_identity import load_identity_config, annotate_ip
+    if ip_version not in (None, 4, 6) or direction not in (None, 'inbound', 'outbound') or result not in (None, 'allow', 'block'):
+        raise HTTPException(400, 'Invalid firewall filter')
+    conditions = ["timestamp >= NOW() - (%s * INTERVAL '1 hour')"]
+    params = [hours]
+    if ip_version:
+        conditions.append('family(src_ip)=%s'); params.append(ip_version)
+    if direction:
+        conditions.append('direction=%s'); params.append(direction)
+    if result:
+        conditions.append('rule_action=%s'); params.append(result)
+    where = ' AND '.join(conditions)
+    source = logs_source()
+    groups = _query(f'''SELECT rule_name,rule_action,direction,family(src_ip) AS ip_version,interface_in,
+                       COUNT(*) AS count FROM {source} WHERE {where}
+                       GROUP BY 1,2,3,4,5 ORDER BY count DESC''', params)
+    series = _query(f'''SELECT date_trunc(%s,timestamp) AS timestamp,
+                       COUNT(*) FILTER(WHERE rule_action='allow') AS accepted,
+                       COUNT(*) FILTER(WHERE rule_action='block') AS blocked
+                       FROM {source} WHERE {where} GROUP BY 1 ORDER BY 1''',
+                    ['minute' if hours <= 6 else 'hour'] + params)
+    events = _query(f'''SELECT * FROM {source} WHERE {where}
+                       ORDER BY timestamp DESC,id DESC LIMIT 50''', params)
+    for row in events:
+        for key in ('src_ip','dst_ip','remote_ip','mac_address'):
+            if row.get(key) is not None:
+                row[key] = str(row[key])
+    _annotate_logs(events)
+    devices = _query(f'''SELECT host(src_ip) AS ip,MAX(mac_address::text) AS mac_address,
+                        MAX(interface_in) AS interface_in,COUNT(*) AS count,
+                        COUNT(*) FILTER(WHERE rule_action='block') AS blocked
+                        FROM {source} WHERE {where} AND direction='outbound'
+                        GROUP BY src_ip ORDER BY count DESC LIMIT 8''', params)
+    cfg = load_identity_config(enricher_db)
+    from mikrotik_dashboard import device_identity
+    for row in devices:
+        device = device_identity(cfg.mikrotik_devices, row['ip'], row.get('mac_address'), row.get('interface_in'))
+        row['name'] = device['name'] if device else annotate_ip(cfg,row['ip'])[0]
+    categories = {}
+    for row in groups:
+        # Family is returned by PostgreSQL, not guessed from a prefix suffix.
+        probe = dict(row, src_ip='::1' if row['ip_version']==6 else '127.0.0.1')
+        label = presentation(probe,cfg.interface_labels)['category_label']
+        categories[label] = categories.get(label,0) + row['count']
+    return {'total':sum(r['count'] for r in groups),
+            'accepted':sum(r['count'] for r in groups if r['rule_action']=='allow'),
+            'blocked':sum(r['count'] for r in groups if r['rule_action']=='block'),
+            'inbound':sum(r['count'] for r in groups if r['direction']=='inbound'),
+            'outbound':sum(r['count'] for r in groups if r['direction']=='outbound'),
+            'series':series,'events':events,'devices':devices,
+            'categories':[{'name':k,'count':v} for k,v in sorted(categories.items(),key=lambda x:-x[1])],
+            'wan_interfaces':get_config(enricher_db,'wan_interfaces',[]),
+            'scope':'WAN firewall events only','count_unit':'logged packets'}
 
 
 def collapse_router_sources(rows):

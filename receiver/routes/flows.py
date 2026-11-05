@@ -1,3 +1,5 @@
+from router_platform import is_mikrotik
+from mikrotik_dashboard import logs_source
 """Flow graph, zone matrix, and host detail endpoints."""
 
 import ipaddress
@@ -162,7 +164,7 @@ def _lookup_ip_info(conn, nodes):
     cfg = load_identity_config(enricher_db)
     for ip_str in ip_set:
         name, vlan, vpn_badge = annotate_ip(cfg, ip_str, device_names.get(ip_str))
-        if name and not device_names.get(ip_str):
+        if name and (is_mikrotik() or not device_names.get(ip_str)):
             device_names[ip_str] = name
         if vlan is not None:
             gateway_vlans[ip_str] = vlan
@@ -229,7 +231,7 @@ def get_flow_graph(
            ({dim_b_expr})::text AS b,
            ({dim_c_expr})::text AS c,
            COUNT(*) AS value
-    FROM logs
+    FROM {logs_source()}
     WHERE {where}
       AND src_ip IS NOT NULL AND dst_ip IS NOT NULL
       {ip_filter}
@@ -314,7 +316,7 @@ def get_zone_matrix(
         COUNT(*) FILTER (WHERE rule_action = 'allow') AS allow_count,
         COUNT(*) FILTER (WHERE rule_action = 'block') AS block_count,
         COUNT(DISTINCT (host(src_ip) || '-' || host(dst_ip))) AS unique_pairs
-    FROM logs
+    FROM {logs_source()}
     WHERE {where}
       AND interface_in IS NOT NULL AND interface_out IS NOT NULL
     GROUP BY interface_in, interface_out
@@ -401,7 +403,7 @@ def get_host_detail(
                     MAX(timestamp) AS last_seen,
                     MAX(asn_name) AS asn_name,
                     MAX(rdns) AS rdns
-                FROM logs
+                FROM {logs_source()}
                 WHERE {host_where}
             """, [ip] + host_params)
             summary = dict(cur.fetchone())
@@ -431,7 +433,7 @@ def get_host_detail(
             # Identity annotation (gateway/WAN/VPN) — identity vlan takes precedence; DB network preserved if set
             cfg = load_identity_config(enricher_db)
             name, vlan, vpn_badge = annotate_ip(cfg, ip, device.get('device_name'))
-            if name and not device.get('device_name'):
+            if name and (is_mikrotik() or not device.get('device_name')):
                 device['device_name'] = name
             if vlan is not None:
                 device['vlan'] = vlan
@@ -452,7 +454,7 @@ def get_host_detail(
                        COUNT(*) FILTER (WHERE rule_action = 'block') AS block_count,
                        MAX(asn_name) AS asn_name,
                        MAX(rdns) AS rdns
-                FROM logs
+                FROM {logs_source()}
                 WHERE {src_where} AND dst_ip IS NOT NULL
                 GROUP BY dst_ip
                 ORDER BY count DESC
@@ -470,7 +472,7 @@ def get_host_detail(
                        COUNT(*) FILTER (WHERE rule_action = 'block') AS block_count,
                        MAX(asn_name) AS asn_name,
                        MAX(rdns) AS rdns
-                FROM logs
+                FROM {logs_source()}
                 WHERE {dst_where} AND src_ip IS NOT NULL
                 GROUP BY src_ip
                 ORDER BY count DESC
@@ -498,7 +500,7 @@ def get_host_detail(
                 SELECT dst_port, COALESCE(service_name, 'Unknown') AS service_name,
                        COALESCE(LOWER(protocol), 'unknown') AS protocol,
                        COUNT(*) AS count
-                FROM logs
+                FROM {logs_source()}
                 WHERE {host_where}
                   AND dst_port IS NOT NULL
                 GROUP BY dst_port, service_name, protocol
