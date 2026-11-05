@@ -64,6 +64,16 @@ def health():
         except Exception:
             pass
 
+        # DB-IP Lite releases monthly; the host updater checks daily and only
+        # downloads a new month. Keep the existing date fields for API clients.
+        geoip_provider = os.environ.get('GEOIP_PROVIDER', 'maxmind')
+        if geoip_provider == 'dbip-lite':
+            now = datetime.now().astimezone()
+            next_check = now.replace(hour=7, minute=15, second=0, microsecond=0)
+            if next_check <= now:
+                next_check += timedelta(days=1)
+            maxmind_next_update = next_check.isoformat()
+
         # Storage: database size + volume disk usage
         storage = {}
         try:
@@ -94,6 +104,7 @@ def health():
             'abuseipdb': abuseipdb,
             'maxmind_last_update': maxmind_last_update,
             'maxmind_next_update': maxmind_next_update,
+            'geoip_provider': geoip_provider,
             'storage': storage,
         }
     except Exception as e:

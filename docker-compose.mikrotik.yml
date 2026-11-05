@@ -20,7 +20,7 @@ services:
       - '${SYSLOG_BIND:-127.0.0.1}:${SYSLOG_PORT:-1515}:514/udp'
     volumes:
       - mikrotik_pgdata:/var/lib/postgresql/data
-      - ./maxmind:/app/maxmind
+      - '${GEOIP_DATA_DIR:-./maxmind}:/app/maxmind'
     environment:
       ROUTER_PLATFORM: mikrotik
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?Set a private database password}'
@@ -34,6 +34,7 @@ services:
       DNS_RETENTION_DAYS: '${DNS_RETENTION_DAYS:-14}'
       MAXMIND_ACCOUNT_ID: '${MAXMIND_ACCOUNT_ID:-}'
       MAXMIND_LICENSE_KEY: '${MAXMIND_LICENSE_KEY:-}'
+      GEOIP_PROVIDER: '${GEOIP_PROVIDER:-maxmind}'
       ABUSEIPDB_API_KEY: '${ABUSEIPDB_API_KEY:-}'
       DB_HOST: '${DB_HOST:-127.0.0.1}'
       DB_PORT: '${DB_PORT:-5432}'

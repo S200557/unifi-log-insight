@@ -26,7 +26,7 @@ The default bindings are **127.0.0.1:8091** for the UI and **127.0.0.1:1515/udp*
 ssh -N -L 8091:127.0.0.1:8091 your-staging-server
 ```
 
-Open `http://127.0.0.1:8091`. Authentication defaults to enabled. Complete the initial local administrator setup, then select the exact WAN interface names and optional labels under **Syslog & networks**. RouterOS names such as `bridge`, `pppoe-out1` and `MGMT-50` are accepted; names do not imply VLAN IDs or trust.
+The loopback backend is `http://127.0.0.1:8091`. Authentication defaults to enabled and requires an HTTPS reverse proxy with the app’s proxy-auth header. Provision the initial administrator through that secure endpoint before exposing it. See [dashboard access and enrichment](docs/MikroTik-enrichment.md). The MikroTik UI opens Router telemetry by default; other dashboards remain in the navigation. Then select the exact WAN interface names and optional labels under **Syslog & networks**. RouterOS names such as `bridge`, `pppoe-out1` and `MGMT-50` are accepted; names do not imply VLAN IDs or trust.
 
 To receive live router logs, deliberately choose the intended private host binding and authorized syslog destination. Do not replace an existing Splunk destination or change router logging without reviewing and approving that separate network change. The software itself never performs that change.
 
@@ -36,7 +36,7 @@ To receive live router logs, deliberately choose the intended private host bindi
 - Firewall events without an evidenced action remain **unknown**. Known Jotne prefixes are recognized, and exact prefix meanings can be configured locally. Logged-event counts are not bandwidth totals.
 - Interface rates use successive exported byte counters. Resets, duplicate timestamps and gaps over 15 minutes produce no rate.
 - Every exporter family and field is preserved. Optional routing, VPN, Wi-Fi and UPnP tables can be empty when no corresponding records arrive. Neighbor attributes are assembled from Jotne's separate messages.
-- Local MaxMind databases or optional MaxMind account credentials enable country/ASN data. An optional AbuseIPDB key enables threat scores. Reverse DNS is available but defaults off in this Compose file. Credentials can be supplied through the private environment file; the corresponding variables are passed into the container.
+- Local MaxMind databases or the free monthly DB-IP City/ASN Lite databases enable IP enrichment. [The DB-IP updater](docs/MikroTik-enrichment.md) needs no account key and includes source attribution. Optional MaxMind account downloads remain supported. An optional AbuseIPDB key enables threat scores. Reverse DNS remains available and defaults off. Credentials belong in the private environment file.
 - Pi-hole integration remains available. UniFi controller setup, policy-write controls and its browser extension are excluded. No AdGuard integration is claimed.
 - External PostgreSQL remains supported through `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_SSLMODE`; the entrypoint disables embedded PostgreSQL for a remote database. Historical default database/cache names are preserved for compatibility.
 - The dashboard is a focused syslog application, not an implementation of the Splunk search language or every custom Splunk dashboard.

@@ -119,7 +119,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#', '').split('?')[0]
     const valid = TABS.map(t => t.id)
-    return valid.includes(hash) ? hash : 'logs'
+    return valid.includes(hash) ? hash : (MIKROTIK ? 'router' : 'logs')
   })
   const [health, setHealth] = useState(null)
   const [latestRelease, setLatestRelease] = useState(null)
@@ -787,11 +787,11 @@ export default function App() {
                 </span>
                 <span className="text-xs text-gray-600">|</span>
                 <span className="text-xs text-gray-400">
-                  MaxMind: {formatShortDate(health.maxmind_last_update)}
+                  GeoIP: {formatShortDate(health.maxmind_last_update)}
                 </span>
                 <span className="text-xs text-gray-600">|</span>
                 <span className="text-xs text-gray-400">
-                  Next pull: {formatShortDate(health.maxmind_next_update)}
+                  Next check: {formatShortDate(health.maxmind_next_update)}
                 </span>
                 <span className="text-xs text-gray-600">|</span>
                 <span className="text-xs text-gray-400">
@@ -814,8 +814,8 @@ export default function App() {
                     <div className="text-xs text-gray-300 font-medium mb-2">System Status</div>
                     <div className="text-xs text-gray-400 space-y-1">
                       <div>AbuseIPDB: {formatAbuseIPDB(health.abuseipdb)}</div>
-                      <div>MaxMind: {formatShortDate(health.maxmind_last_update)}</div>
-                      <div>Next pull: {formatShortDate(health.maxmind_next_update)}</div>
+                      <div>GeoIP: {formatShortDate(health.maxmind_last_update)}</div>
+                      <div>Next check: {formatShortDate(health.maxmind_next_update)}</div>
                       <div>{health.total_logs?.toLocaleString()} logs</div>
                     </div>
                   </div>
@@ -868,7 +868,9 @@ export default function App() {
 
       {/* Content */}
       {MIKROTIK && health?.ingestion_mode === 'staging-replay' && <div className="px-4 py-2 text-xs text-amber-300 bg-amber-500/10 border-b border-amber-700/30">Staging replay of historical syslog · Router configuration unchanged</div>}
-      {MIKROTIK && activeTab === 'threat-map' && !health?.maxmind_last_update && <div className="px-4 py-2 text-xs text-gray-300 bg-teal-500/10 border-b border-teal-700/30">GeoIP databases are not installed. Add local MaxMind databases or configure MaxMind downloads to place events on the map.</div>}
+      {MIKROTIK && health?.ingestion_mode === 'awaiting-router' && <div className="px-4 py-2 text-xs text-amber-300 bg-amber-500/10 border-b border-amber-700/30">Live receiver ready · Waiting for router forwarding · Existing history was replayed</div>}
+      {health?.geoip_provider === 'dbip-lite' && <div className="px-4 py-1 text-xs text-gray-400 bg-gray-900 border-b border-gray-800"><a href="https://db-ip.com" target="_blank" rel="noopener noreferrer" className="underline">IP Geolocation by DB-IP</a> · City and ASN Lite · Approximate locations, updated monthly</div>}
+      {MIKROTIK && activeTab === 'threat-map' && !health?.maxmind_last_update && <div className="px-4 py-2 text-xs text-gray-300 bg-teal-500/10 border-b border-teal-700/30">GeoIP databases are not installed. Configure local City and ASN databases to place events on the map.</div>}
       <main className="flex-1 overflow-hidden">
         {activeTab === 'logs' && <LogStream version={health?.version} latestRelease={latestRelease} maxFilterDays={maxFilterDays} drillFilters={logsDrill} onDrillConsumed={clearLogsDrill} interfaces={allInterfaces} onPauseChange={onLogsPauseChange} uiSettings={uiSettings} />}
         <Suspense fallback={<DashboardSkeleton />}>
