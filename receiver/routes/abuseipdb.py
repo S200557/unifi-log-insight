@@ -35,6 +35,11 @@ def abuseipdb_status():
 def enrich_ip(ip: str):
     if not is_public_ip(ip):
         raise HTTPException(status_code=400, detail="Not a public IP")
+    from router_platform import is_mikrotik
+    if is_mikrotik():
+        from abuseipdb_scope import allowed_remote_ip
+        if not allowed_remote_ip(enricher_db, ip):
+            raise HTTPException(status_code=400, detail="Only remote public IPs from blocked WAN events can be checked")
 
     # Reject WAN/gateway IPs — enriching these contaminates log rows
     wan_ips = get_wan_ips_from_config(enricher_db)

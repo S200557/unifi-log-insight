@@ -12,6 +12,7 @@ from psycopg2.extras import RealDictCursor
 
 from deps import get_conn, put_conn
 from query_helpers import build_time_conditions, validate_time_params
+from geo_modes import GEO_MODES
 
 logger = logging.getLogger('api.threats')
 
@@ -210,8 +211,10 @@ _GEO_SELECT = (
     "SELECT geo_lat as lat, geo_lon as lon, geo_country as country, "
     "geo_city as city, COUNT(*) as count, "
     "MAX(threat_score) as max_score, "
+    "COUNT(threat_score) as scored_events, "
     "AVG(threat_score)::int as avg_score, "
-    "COUNT(DISTINCT COALESCE(host(src_ip), host(dst_ip))) as unique_ips, "
+    "COUNT(DISTINCT COALESCE(host(remote_ip), CASE WHEN direction='outbound' "
+    "THEN host(dst_ip) ELSE host(src_ip) END)) as unique_ips, "
     "(array_agg(id ORDER BY timestamp DESC))[1:50] as log_ids "
     f"FROM {logs_source()} "
 )
@@ -222,20 +225,16 @@ def get_threats_geo(
     time_range: Optional[str] = Query("24h", description="1h,6h,24h,7d,30d,60d"),
     time_from: Optional[str] = Query(None),
     time_to: Optional[str] = Query(None),
-    mode: str = Query("threats", description="threats or blocked_outbound"),
+    mode: str = Query("threats", description="activity, blocked, threats or blocked_outbound"),
 ):
     """Geo-aggregated threat data as GeoJSON for map visualization."""
-    mode_conds = {
-        'threats': ["threat_score > 70"],
-        'blocked_outbound': ["direction = 'outbound'", "rule_action = 'block'"],
-    }
-    if mode not in mode_conds:
-        raise HTTPException(status_code=400, detail="mode must be 'threats' or 'blocked_outbound'")
+    if mode not in GEO_MODES:
+        raise HTTPException(status_code=400, detail="Invalid map mode")
 
     time_range, time_from, time_to = validate_time_params(time_range, time_from, time_to)
     time_conds, params = build_time_conditions(time_range, time_from, time_to)
 
-    all_conds = time_conds + mode_conds[mode] + [
+    all_conds = time_conds + GEO_MODES[mode] + [
         "geo_lat IS NOT NULL",
         "geo_lon IS NOT NULL",
     ]
@@ -265,6 +264,7 @@ def get_threats_geo(
                     'city': row['city'],
                     'count': row['count'],
                     'max_score': row['max_score'] or 0,
+                    'scored_events': row['scored_events'],
                     'avg_score': row.get('avg_score', 0) or 0,
                     'unique_ips': row.get('unique_ips', 0) or 0,
                     'log_ids': row.get('log_ids') or [],

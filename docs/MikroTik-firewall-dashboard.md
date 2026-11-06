@@ -18,6 +18,32 @@ dedicated endpoints.
 The interface list is app-local configuration. The receiver never obtains router
 management credentials, adds trust entries, or writes RouterOS configuration.
 
+## Flows, map and external reputation
+
+Traffic flows opens the Zone Matrix for MikroTik. The optional flow graph starts
+with source zone, protocol and destination zone; IP and port dimensions remain
+available. Portless ICMP/ICMPv6 and tunnel protocols have explicit labels.
+Top-N remainder nodes show how many values are grouped rather than implying
+unknown identity. Changing dimensions does not discard the underlying events.
+
+The MikroTik world map defaults to **WAN Activity** (all geolocated WAN events),
+with separate **Blocked WAN**, **Threats** (score above 70) and **Blocked
+Outbound** filters. An unscored IP is not evidence of safety or maliciousness.
+Map request failures are visible rather than silently rendered as empty data.
+
+AbuseIPDB uses the existing private `ABUSEIPDB_API_KEY` deployment setting.
+Only the remote public endpoint of an observed blocked WAN event is eligible
+for an external check. The final API-call guard covers live, queued, stale and
+manual lookups. It rejects private/reserved addresses, configured local CIDRs,
+router WAN/gateway addresses, inventory addresses and locally observed endpoints
+(including their IPv6 /64). Missing scope configuration or database errors fail
+closed. `mikrotik_local_networks` must contain reviewed local IPv4 networks and
+delegated IPv6 prefixes; refresh it after network/delegation changes. Observed
+local-side IPv6 prefixes also protect dynamically learned client addresses.
+No hostnames, MAC addresses, private addresses or raw messages are submitted.
+Checks do not report IPs or change firewall policy. Existing API quota and cache
+handling applies. GeoIP remains local and independent of AbuseIPDB.
+
 ## Presentation
 
 Packet rows display **Direction** (`Inbound IPv4`, `Outbound IPv6`, etc.),

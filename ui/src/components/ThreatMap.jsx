@@ -8,10 +8,12 @@ import { THREAT_LEVELS } from '../lib/threatPresentation'
 import useTimeRange from '../hooks/useTimeRange'
 import ThreatSidebar from './ThreatSidebar'
 import DateRangePicker from './DateRangePicker'
+import { MIKROTIK } from '../platform'
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl)
 
 const MODES = [
+  ...(MIKROTIK ? [{ id: 'activity', label: 'WAN Activity' }, { id: 'blocked', label: 'Blocked WAN' }] : []),
   { id: 'threats', label: 'Threats' },
   { id: 'blocked_outbound', label: 'Blocked Outbound' },
 ]
@@ -80,6 +82,7 @@ function applyLayers(map, geoData, view, _retry) {
 
     if (!geoData?.features?.length) return
 
+    const activityMode = ['activity', 'blocked'].includes(geoData.summary?.mode)
     if (view === 'heatmap') {
       map.addSource('threats', { type: 'geojson', data: geoData })
 
@@ -126,7 +129,7 @@ function applyLayers(map, geoData, view, _retry) {
           'circle-radius': ['interpolate', ['linear'], ['get', 'count'],
             1, 4, 10, 7, 50, 11, 200, 16,
           ],
-          'circle-color': SCORE_INTERPOLATE,
+          'circle-color': activityMode ? '#2563eb' : SCORE_INTERPOLATE,
           'circle-opacity': ['interpolate', ['linear'], ['zoom'],
             6, 0, 8, 0.8,
           ],
@@ -154,7 +157,7 @@ function applyLayers(map, geoData, view, _retry) {
         source: 'threats',
         filter: ['has', 'point_count'],
         paint: {
-          'circle-color': SCORE_STEP,
+          'circle-color': activityMode ? '#2563eb' : SCORE_STEP,
           'circle-radius': ['step', ['get', 'sum_count'], 18, 10, 24, 50, 32, 200, 42],
           'circle-opacity': 0.85,
           'circle-stroke-width': 2,
@@ -183,7 +186,7 @@ function applyLayers(map, geoData, view, _retry) {
         source: 'threats',
         filter: ['!', ['has', 'point_count']],
         paint: {
-          'circle-color': SCORE_STEP,
+          'circle-color': activityMode ? '#2563eb' : SCORE_STEP,
           'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 1, 6, 50, 12, 200, 18],
           'circle-opacity': 0.85,
           'circle-stroke-width': 1,
@@ -217,11 +220,13 @@ export default function ThreatMap({ maxFilterDays, flyTo, onFlyToDone }) {
   const mapRef = useRef(null)
   const flyToMarkerRef = useRef(null)
   const [timeRange, setTimeRange, visibleRanges] = useTimeRange(maxFilterDays)
-  const [mode, setMode] = useState('threats')
+  const defaultMode = MIKROTIK ? 'activity' : 'threats'
+  const [mode, setMode] = useState(defaultMode)
   const [view, setView] = useState('heatmap')
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [geoData, setGeoData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [geoError, setGeoError] = useState(null)
   const [sidebarLocation, setSidebarLocation] = useState(null)
   const [hasFlyToMarker, setHasFlyToMarker] = useState(false)
   const [timeFrom, setTimeFrom] = useState(null)
@@ -250,8 +255,8 @@ export default function ThreatMap({ maxFilterDays, flyTo, onFlyToDone }) {
     setLoading(true)
     setSidebarLocation(null)
     fetchThreatGeo(geoParams)
-      .then(data => { if (mounted) setGeoData(data) })
-      .catch(() => {})
+      .then(data => { if (mounted) { setGeoData(data); setGeoError(null) } })
+      .catch(err => { if (mounted) setGeoError(err.message || 'Map data could not be loaded') })
       .finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false }
   }, [timeRange, timeFrom, timeTo, mode])
@@ -261,8 +266,8 @@ export default function ThreatMap({ maxFilterDays, flyTo, onFlyToDone }) {
     let mounted = true
     const interval = setInterval(() => {
       fetchThreatGeo(geoParams)
-        .then(data => { if (mounted) setGeoData(data) })
-        .catch(() => {})
+        .then(data => { if (mounted) { setGeoData(data); setGeoError(null) } })
+        .catch(err => { if (mounted) setGeoError(err.message || 'Map data could not be loaded') })
     }, 60000)
     return () => { mounted = false; clearInterval(interval) }
   }, [timeRange, timeFrom, timeTo, mode])
@@ -276,6 +281,7 @@ export default function ThreatMap({ maxFilterDays, flyTo, onFlyToDone }) {
       style: getTheme() === 'dark' ? TILE_DARK : TILE_LIGHT,
       center: [20, 20],
       zoom: 1.5,
+      renderWorldCopies: false,
       attributionControl: false,
     })
 
@@ -337,7 +343,7 @@ export default function ThreatMap({ maxFilterDays, flyTo, onFlyToDone }) {
       icon.appendChild(path)
       header.appendChild(icon)
       container.appendChild(header)
-      container.appendChild(el('div', null, `${p.count} events · Score: ${p.max_score}`))
+      container.appendChild(el('div', null, `${p.count} events · ${Number(p.scored_events) > 0 ? `Highest checked score: ${p.max_score}` : 'Reputation not checked'}`))
       container.appendChild(el('div', null, `${p.unique_ips} unique IPs`))
       container.appendChild(el('div', 'opacity-40 mt-0.5', 'Click for details'))
       clusterPopup.setLngLat(coords).setDOMContent(container).addTo(map)
@@ -481,7 +487,7 @@ export default function ThreatMap({ maxFilterDays, flyTo, onFlyToDone }) {
   // Count active non-default filters for mobile badge
   const activeFilterCount = [
     isCustomTime || timeRange !== '24h',
-    mode !== 'threats',
+    mode !== defaultMode,
     view !== 'heatmap',
   ].filter(Boolean).length
 
@@ -588,7 +594,7 @@ export default function ThreatMap({ maxFilterDays, flyTo, onFlyToDone }) {
                 setTimeRange('24h')
                 setTimeFrom(null)
                 setTimeTo(null)
-                setMode('threats')
+                setMode(defaultMode)
                 setView('heatmap')
               }}
               className="shrink-0 text-xs text-gray-400 hover:text-gray-200 transition-colors"
@@ -618,14 +624,16 @@ export default function ThreatMap({ maxFilterDays, flyTo, onFlyToDone }) {
           <div ref={mapContainer} className="absolute inset-0" />
 
           {/* Empty state */}
-          {!loading && geoData?.features?.length === 0 && !hasFlyToMarker && (
+          {!loading && (geoError || geoData?.features?.length === 0) && !hasFlyToMarker && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
               <div className="bg-gray-950/80 border border-gray-800 rounded-lg px-6 py-4 text-center">
-                <div className="text-gray-400 text-sm">No geo data available</div>
+                <div className="text-gray-400 text-sm">{geoError ? 'Map data could not be loaded' : 'No matching locations'}</div>
                 <div className="text-gray-500 text-xs mt-1">
-                  {mode === 'threats'
+                  {geoError || (mode === 'activity' ? 'No WAN events with geographic coordinates in this time range'
+                    : mode === 'blocked' ? 'No blocked WAN events with geographic coordinates in this time range'
+                    : mode === 'threats'
                     ? 'No threats with score > 70 and geo coordinates found'
-                    : 'No blocked outbound traffic with geo coordinates found'}
+                    : 'No blocked outbound traffic with geo coordinates found')}
                 </div>
               </div>
             </div>
@@ -645,6 +653,12 @@ export default function ThreatMap({ maxFilterDays, flyTo, onFlyToDone }) {
                   <div className="flex justify-between text-[9px] text-white/50 mt-0.5 w-28">
                     <span>Fewer</span><span>More</span>
                   </div>
+                </>
+              ) : ['activity', 'blocked'].includes(mode) ? (
+                <>
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wider">WAN activity</div>
+                  <div className="text-[10px] text-gray-400 mt-1">Circle size = logged event count</div>
+                  <div className="text-[10px] text-gray-500 mt-1">Location does not imply a threat</div>
                 </>
               ) : (
                 <>

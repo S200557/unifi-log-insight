@@ -15,6 +15,7 @@ from psycopg2.extras import RealDictCursor
 from db import get_config
 from deps import get_conn, put_conn, enricher_db
 from ip_identity import load_identity_config, annotate_ip
+from flow_presentation import dimension_expressions, describe_nodes
 from query_helpers import (build_log_query, validate_time_params, ALLOWED_DIMENSIONS,
                           device_name_client_lateral, device_name_device_lateral,
                           device_name_coalesce)
@@ -217,9 +218,10 @@ def get_flow_graph(
         search=None, service=None, interface=interface,
     )
 
-    dim_a_expr = DIMENSION_EXPRS[dims[0]]
-    dim_b_expr = DIMENSION_EXPRS[dims[1]]
-    dim_c_expr = DIMENSION_EXPRS[dims[2]]
+    expressions = dimension_expressions(DIMENSION_EXPRS, is_mikrotik())
+    dim_a_expr = expressions[dims[0]]
+    dim_b_expr = expressions[dims[1]]
+    dim_c_expr = expressions[dims[2]]
 
     requested_top_n = top_n
     base_params = params + ip_params_extra
@@ -251,8 +253,12 @@ def get_flow_graph(
             nodes, links, _ = _build_sankey(remapped, dims, requested_top_n, top_n)
 
             if len(nodes) <= MAX_NODES and len(links) <= MAX_LINKS:
+                if is_mikrotik():
+                    describe_nodes(nodes, grouped_rows, dims, top_n)
                 device_names, gateway_vlans, vpn_badges = _lookup_ip_info(conn, nodes)
                 labels = get_config(enricher_db, 'interface_labels', {}) or {}
+                if is_mikrotik():
+                    labels = dict(labels, router='Router')
                 wan = list(get_config(enricher_db, 'wan_interfaces', []) or [])
                 conn.commit()
                 return {

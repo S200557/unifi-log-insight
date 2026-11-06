@@ -10,21 +10,21 @@ import { MIKROTIK } from '../platform'
 
 const ZoneMatrix = lazy(() => import('./ZoneMatrix'))
 
-const ACTIONS = MIKROTIK ? ['allow', 'block', 'redirect', 'unknown'] : ['allow', 'block']
-const DIRECTIONS = ['inbound', 'outbound', 'inter_vlan', 'nat', 'local', 'vpn']
+const ACTIONS = ['allow', 'block']
+const DIRECTIONS = MIKROTIK ? ['inbound', 'outbound'] : ['inbound', 'outbound', 'inter_vlan', 'nat', 'local', 'vpn']
 const SUB_TABS = [
   { key: 'sankey', label: 'Flow Graph' },
   { key: 'zone-matrix', label: 'Zone Matrix' },
 ]
 
-const SESSION_KEY = 'flowview_filters'
+const SESSION_KEY = MIKROTIK ? 'flowview_wan_filters_v2' : 'flowview_filters'
 
 export default function FlowView({ maxFilterDays }) {
   const [timeRange, setTimeRange, visibleRanges] = useTimeRange(maxFilterDays)
   const [activeActions, setActiveActions] = useState(ACTIONS)
   const [activeDirections, setActiveDirections] = useState(DIRECTIONS)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [dims, setDims] = useState(['src_ip', 'dst_port', 'dst_ip'])
+  const [dims, setDims] = useState(MIKROTIK ? ['interface_in', 'protocol', 'interface_out'] : ['src_ip', 'dst_port', 'dst_ip'])
   const [topN, setTopN] = useState(15)
   const [activeViewName, setActiveViewName] = useState(null)
 
@@ -32,7 +32,7 @@ export default function FlowView({ maxFilterDays }) {
   const [savedViews, setSavedViews] = useState([])
 
   // Sub-tab state
-  const [activePanel, setActivePanel] = useState('sankey')
+  const [activePanel, setActivePanel] = useState(MIKROTIK ? 'zone-matrix' : 'sankey')
 
   // Defer ip-pairs until Sankey resolves (avoid concurrent heavy queries).
   // Uses request-key matching instead of a boolean to avoid effect-order races on remount.

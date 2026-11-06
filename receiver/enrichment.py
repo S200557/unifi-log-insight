@@ -529,6 +529,14 @@ class AbuseIPDBEnricher:
             except Exception as e:
                 logger.debug("DB threat cache lookup failed for %s: %s", ip_str, e)
 
+        # Enforce the MikroTik Internet boundary at the final external-call
+        # point, including manual and background lookups. Cache reads stay local.
+        from router_platform import is_mikrotik
+        if is_mikrotik():
+            from abuseipdb_scope import allowed_remote_ip
+            if not allowed_remote_ip(self.db, ip_str):
+                return {}
+
         # 3. Check rate limit before API call
         if not self._check_rate_limit():
             return {}

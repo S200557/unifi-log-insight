@@ -8,6 +8,7 @@ import FullscreenToggle from './FullscreenToggle'
 import InfoTooltip from './InfoTooltip'
 import KebabMenu, { SaveLoadMenuItems } from './KebabMenu'
 import { exportChartPng } from '../lib/exportPng'
+import { MIKROTIK } from '../platform'
 
 const DIMENSION_OPTIONS = [
   { value: 'src_ip', label: 'Source IP' },
@@ -16,8 +17,8 @@ const DIMENSION_OPTIONS = [
   { value: 'protocol', label: 'Protocol' },
   { value: 'service_name', label: 'Service' },
   { value: 'direction', label: 'Direction' },
-  { value: 'interface_in', label: 'Interface In' },
-  { value: 'interface_out', label: 'Interface Out' },
+  { value: 'interface_in', label: MIKROTIK ? 'Source zone' : 'Interface In' },
+  { value: 'interface_out', label: MIKROTIK ? 'Destination zone' : 'Interface Out' },
 ]
 
 const COLUMN_COLORS = [
@@ -348,7 +349,7 @@ export default function SankeyChart({ filters, refreshKey, onNodeClick, activeFi
     }
 
     // Service name (uppercase except Unknown)
-    let displayLabel = node.label
+    let displayLabel = node.display_label || node.label
     if (node.type === 'service_name' && !isOther) {
       displayLabel = formatServiceName(node.label)
     }
@@ -545,7 +546,7 @@ export default function SankeyChart({ filters, refreshKey, onNodeClick, activeFi
               {layout.nodes.map((node, i) => {
                 const isOther = node.label === 'Other'
                 const isPlaceholder = node.label === 'Unknown' || node.label === 'unknown'
-                const isClickable = !isOther && !isPlaceholder && onNodeClick
+                const isClickable = node.actionable !== false && !isOther && !isPlaceholder && onNodeClick
                 const isActive = activeFilter && activeFilter.type === node.type && activeFilter.value === node.label
                 const isDimmed = activeFilter && activeFilter.type === node.type && !isActive && !isOther
                 return (
@@ -561,7 +562,7 @@ export default function SankeyChart({ filters, refreshKey, onNodeClick, activeFi
                     strokeDasharray={isOther ? '3,2' : undefined}
                     stroke={isActive ? '#ffffff' : isOther ? '#6b7280' : 'none'}
                     strokeWidth={isActive ? 2 : 1}
-                    onMouseMove={e => handleMouseMove(e, node.label, node.value)}
+                    onMouseMove={e => handleMouseMove(e, node.display_label || node.label, node.value)}
                     onMouseLeave={() => setTooltip(null)}
                     onClick={isClickable ? () => onNodeClick({ type: node.type, value: node.label }) : undefined}
                     className={isClickable ? 'cursor-pointer' : 'cursor-default'}
