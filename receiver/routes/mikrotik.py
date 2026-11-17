@@ -6,12 +6,13 @@ import math
 import ipaddress
 import re
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from psycopg2.extras import Json, RealDictCursor
 
 from db import get_config
-from mikrotik_dashboard import logs_source, presentation
+from mikrotik_dashboard import device_identity, logs_source, presentation
 from deps import enricher_db, get_conn, put_conn, signal_receiver
 
 router = APIRouter(prefix='/api/mikrotik', tags=['MikroTik'])
@@ -125,6 +126,63 @@ def _query(sql, params=()):
         return rows
     finally:
         put_conn(conn)
+
+
+@router.get('/dhcp')
+def dhcp_logs(
+    time_range: Literal['24h', '7d', '30d', 'all'] = '7d',
+    event: Literal['assigned', 'deassigned', 'other'] | None = None,
+    server: str = Query('', max_length=255),
+    search: str = Query('', max_length=255),
+    page: int = Query(1, ge=1, le=10000),
+):
+    """Read lease events directly, outside the WAN firewall query scope."""
+    conditions = ["log_type = 'dhcp'"]
+    params = []
+    if time_range != 'all':
+        conditions.append("timestamp >= NOW() - (%s * INTERVAL '1 day')")
+        params.append({'24h': 1, '7d': 7, '30d': 30}[time_range])
+    if event == 'other':
+        conditions.append("COALESCE(dhcp_event, '') NOT IN ('assigned', 'deassigned')")
+    elif event:
+        conditions.append('dhcp_event = %s')
+        params.append(event)
+    if server:
+        conditions.append("router_fields->>'dhcp_server' = %s")
+        params.append(server)
+
+    inventory = get_config(enricher_db, 'mikrotik_device_inventory', []) or []
+    devices_by_mac = {}
+    for device in inventory:
+        if device.get('mac'):
+            devices_by_mac.setdefault(device['mac'].lower(), []).append(device)
+
+    search = search.strip()
+    if search:
+        needle = search.casefold()
+        named_macs = [mac for mac, devices in devices_by_mac.items()
+                      if any(needle in (device.get('name') or '').casefold() for device in devices)]
+        conditions.append('(strpos(lower(raw_log), lower(%s)) > 0 OR mac_address = ANY(%s::macaddr[]))')
+        params.extend([search, named_macs])
+
+    page_size = 50
+    where = ' AND '.join(conditions)
+    rows = _query(f'''SELECT id, timestamp, dhcp_event AS event, host(src_ip) AS address,
+                            mac_address::text AS mac, hostname, router_fields->>'dhcp_server' AS server,
+                            raw_log
+                     FROM logs WHERE {where}
+                     ORDER BY timestamp DESC, id DESC LIMIT %s OFFSET %s''',
+                  params + [page_size + 1, (page - 1) * page_size])
+    for row in rows[:page_size]:
+        matches = devices_by_mac.get((row['mac'] or '').lower(), [])
+        device = device_identity(matches, row['address'])
+        row['device_name'] = device['name'] if device else None
+
+    servers = _query("""SELECT DISTINCT router_fields->>'dhcp_server' AS name FROM logs
+                        WHERE log_type = 'dhcp' AND NULLIF(router_fields->>'dhcp_server', '') IS NOT NULL
+                        ORDER BY name""")
+    return {'events': rows[:page_size], 'has_more': len(rows) > page_size,
+            'servers': [row['name'] for row in servers]}
 
 
 @router.get('/status')

@@ -140,6 +140,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         ('/api/config',          'settings.read', 'settings.write'),
         ('/api/setup/',          'settings.read', 'settings.write'),
         ('/api/mikrotik/config', 'settings.read', 'settings.write'),
+        ('/api/mikrotik/dhcp',   'logs.read', None),
         ('/api/mikrotik/',       'system.read', None),
         ('/api/firewall/',       'firewall.read', 'firewall.write'),
         ('/api/unifi/',          'unifi.read', None),

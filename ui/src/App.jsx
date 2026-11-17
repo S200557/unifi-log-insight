@@ -14,6 +14,7 @@ const Dashboard = React.lazy(() => MIKROTIK ? import('./components/MikroTikDashb
 const ThreatMap = React.lazy(() => import('./components/ThreatMap'))
 const FlowView = React.lazy(() => import('./components/FlowView'))
 const RouterTelemetry = React.lazy(() => import('./components/RouterTelemetry'))
+const DhcpLogs = React.lazy(() => import('./components/DhcpLogs'))
 import Login from './components/Login'
 import { fetchHealth, fetchConfig, fetchLatestRelease, dismissUpgradeModal, dismissVpnToast, fetchInterfaces, fetchUiSettings, updateUiSettings, fetchUniFiSettings, fetchAuthStatus, fetchAuthMe, authLogout, setAuthExpiredHandler } from './api'
 import { loadInterfaceLabels } from './utils'
@@ -75,7 +76,10 @@ const TABS = [
   { id: 'flow-view', label: 'Flow View', shortLabel: 'Flow' },
   { id: 'threat-map', label: 'Threat Map', shortLabel: 'Map' },
   { id: 'dashboard', label: 'Dashboard', shortLabel: 'Dashboard' },
-  ...(MIKROTIK ? [{ id: 'router', label: 'Router telemetry', shortLabel: 'Router' }] : []),
+  ...(MIKROTIK ? [
+    { id: 'dhcp', label: 'DHCP logs', shortLabel: 'DHCP' },
+    { id: 'router', label: 'Router telemetry', shortLabel: 'Router' },
+  ] : []),
 ]
 
 function formatShortDate(isoStr) {
@@ -885,6 +889,7 @@ export default function App() {
         {activeTab === 'logs' && <LogStream version={health?.version} latestRelease={latestRelease} maxFilterDays={maxFilterDays} drillFilters={logsDrill} onDrillConsumed={clearLogsDrill} interfaces={allInterfaces} onPauseChange={onLogsPauseChange} uiSettings={uiSettings} />}
         <Suspense fallback={<DashboardSkeleton />}>
           {activeTab === 'router' && <RouterTelemetry />}
+          {activeTab === 'dhcp' && <DhcpLogs />}
           {activeTab === 'dashboard' && <Dashboard maxFilterDays={maxFilterDays} />}
         </Suspense>
         <Suspense fallback={<FlowViewSkeleton />}>

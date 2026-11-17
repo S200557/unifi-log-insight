@@ -487,6 +487,7 @@ export async function fetchLatestRelease(currentVersion) {
 }
 
 export const fetchMikroTikStatus = () => apiFetch(`${BASE}/mikrotik/status`)
+export const fetchMikroTikDhcpLogs = (params = {}, signal) => apiFetch(`${BASE}/mikrotik/dhcp?${buildQS(params)}`, { signal })
 export const fetchMikroTikConfig = () => apiFetch(`${BASE}/mikrotik/config`)
 export const fetchMikroTikResources = (params = {}) => apiFetch(`${BASE}/mikrotik/resources?${buildQS(params)}`)
 export const fetchMikroTikTelemetry = (params = {}) => apiFetch(`${BASE}/mikrotik/telemetry?${buildQS(params)}`)

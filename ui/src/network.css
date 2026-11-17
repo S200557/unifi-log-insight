@@ -105,6 +105,18 @@ html[data-platform="mikrotik"] { color-scheme:light; }
 .network-error { display:flex; gap:10px; align-items:center; font-size:12px; color:#b64352; background:#fff1f3; border:1px solid #ffd9e0; border-radius:8px; padding:12px 15px; margin-bottom:15px; }
 .network-error button { margin-left:auto; font-weight:700; }
 .network-skeleton { color:#c3cedc; }
+.dhcp-search { display:flex; gap:6px; flex-wrap:wrap; }
+.dhcp-search input,.dhcp-search button,.dhcp-pagination button { background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:7px 10px; color:#475569; font-size:11px; }
+.dhcp-search input { width:min(185px,100%); }
+.dhcp-search button:hover,.dhcp-pagination button:not(:disabled):hover { border-color:#b2d3ff; color:#006fff; }
+.dhcp-table th,.dhcp-table td { font-size:12px; }
+.dhcp-table tbody tr { cursor:default; }
+.dhcp-table td small { display:block; color:#657186; margin-top:3px; }
+.dhcp-table td button { color:#0060df; white-space:nowrap; }
+.dhcp-table pre { white-space:pre-wrap; overflow-wrap:anywhere; color:#475569; background:#f5f7fa; padding:10px; border-radius:6px; }
+.dhcp-status,.dhcp-pagination { padding:16px; color:#475569; font-size:12px; }
+.dhcp-pagination { display:flex; gap:12px; align-items:center; justify-content:flex-end; }
+.dhcp-pagination button:disabled { opacity:.45; cursor:default; }
 [data-platform="mikrotik"] button:focus-visible,[data-platform="mikrotik"] select:focus-visible,[data-platform="mikrotik"] tr:focus-visible { outline:2px solid #006fff; outline-offset:2px; }
 @media(min-width:1700px) { .network-dashboard { padding-inline:40px; }.network-chart { height:260px; } }
 @media(max-width:1150px) { .network-sidebar { width:178px; }.network-dashboard { padding:22px 20px; }.network-metrics { gap:10px; }.network-metric { padding:16px 14px; }.network-metric > small { font-size:9px; }.network-chart-grid { grid-template-columns:minmax(0,1.7fr) minmax(230px,1fr); } }
